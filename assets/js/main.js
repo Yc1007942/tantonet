@@ -82,22 +82,74 @@
 
     // Mobile menu
     if (burger && menu) {
-      var setMenu = function (v) {
+      var previousOverflowY = '';
+      var lastFocused = null;
+      var mobileQuery = window.matchMedia('(max-width: 900px)');
+
+      // Keep the primary actions above the long navigation list on phones.
+      // Moving the existing node preserves all IDs, URLs and analytics hooks.
+      var menuUtility = $('.mm-utility', menu);
+      var menuList = $('ol', menu);
+      if (menuUtility && menuList) menu.insertBefore(menuUtility, menuList);
+      var menuLinks = $all('a, button', menu);
+
+      var setMenu = function (v, restoreFocus) {
+        if (v && !mobileQuery.matches) return;
+        if (v) lastFocused = document.activeElement;
         burger.setAttribute('aria-expanded', String(v));
         menu.classList.toggle('open', v);
-        document.body.style.overflow = v ? 'hidden' : '';
-        if (v) menu.setAttribute('aria-hidden', 'false');
-        else menu.setAttribute('aria-hidden', 'true');
+        nav.classList.toggle('menu-open', v);
+        document.documentElement.classList.toggle('menu-open', v);
+        if (v) {
+          previousOverflowY = document.body.style.overflowY;
+          document.body.style.overflowY = 'hidden';
+          menu.removeAttribute('inert');
+          menu.setAttribute('aria-hidden', 'false');
+          window.requestAnimationFrame(function () {
+            var first = menuLinks[0];
+            if (first && menu.classList.contains('open')) first.focus();
+          });
+        } else {
+          document.body.style.overflowY = previousOverflowY;
+          menu.setAttribute('aria-hidden', 'true');
+          menu.setAttribute('inert', '');
+          if (restoreFocus !== false && lastFocused && typeof lastFocused.focus === 'function') {
+            lastFocused.focus({ preventScroll: true });
+          }
+        }
       };
       menu.setAttribute('aria-hidden', 'true');
+      menu.setAttribute('inert', '');
       burger.addEventListener('click', function () {
         setMenu(burger.getAttribute('aria-expanded') !== 'true');
       });
       $all('a', menu).forEach(function (a) {
-        a.addEventListener('click', function () { setMenu(false); });
+        a.addEventListener('click', function () { setMenu(false, false); });
       });
       document.addEventListener('keydown', function (e) {
-        if (e.key === 'Escape') setMenu(false);
+        var open = burger.getAttribute('aria-expanded') === 'true';
+        if (!open) return;
+        if (e.key === 'Escape') {
+          e.preventDefault();
+          setMenu(false);
+          return;
+        }
+        if (e.key !== 'Tab' || !menuLinks.length) return;
+        var first = menuLinks[0];
+        var last = menuLinks[menuLinks.length - 1];
+        if (e.shiftKey && document.activeElement === first) {
+          e.preventDefault();
+          last.focus();
+        } else if (!e.shiftKey && document.activeElement === last) {
+          e.preventDefault();
+          first.focus();
+        }
+      });
+      var onMenuMediaChange = function (e) { if (!e.matches) setMenu(false, false); };
+      if (mobileQuery.addEventListener) mobileQuery.addEventListener('change', onMenuMediaChange);
+      else if (mobileQuery.addListener) mobileQuery.addListener(onMenuMediaChange);
+      window.addEventListener('pageshow', function (e) {
+        if (e.persisted) setMenu(false, false);
       });
     }
   }
@@ -231,7 +283,11 @@
     nodes.forEach(function (n) { if (!n.classList.contains('in')) revealIO.observe(n); });
   }
   function initReveals() {
-    observeReveals($all('.reveal, .reveal-scale'));
+    var initialNodes = $all('.reveal, .reveal-scale');
+    observeReveals(initialNodes);
+    // CSS keeps reveal content visible until this capability is confirmed.
+    // A failed boot therefore cannot leave entire sections transparent.
+    document.documentElement.classList.add('reveal-ready');
     if ('MutationObserver' in window) {
       var mo = new MutationObserver(function (muts) {
         muts.forEach(function (m) {
@@ -778,6 +834,7 @@
   function initJourney() {
     var pin = $('#journeyPin');
     if (!pin) return;
+    var journey = pin.closest ? pin.closest('.journey') : pin.parentElement.parentElement;
     var layers = $all('.j-layer', pin);
     var caption = {
       step: $('#jcStep'), title: $('#jcTitle'), text: $('#jcText')
@@ -800,7 +857,19 @@
       caption.text.textContent = s.text;
       dots.forEach(function (d, j) { d.classList.toggle('on', j <= i); });
     }
-    if (reducedMotion || !window.gsap || !window.ScrollTrigger) return; // CSS fallback active
+
+    function useFallback() {
+      if (journey) {
+        journey.classList.remove('is-enhancing', 'is-enhanced');
+        journey.classList.add('is-fallback');
+      }
+      setStage(0);
+    }
+
+    if (reducedMotion || !window.gsap || !window.ScrollTrigger || layers.length < 2) {
+      useFallback();
+      return;
+    }
 
     var n = layers.length;
     var STEP = 0.92 / (n - 1); // 0.23 for five stages
@@ -814,36 +883,57 @@
          no black flash between stages even on a fast flick.
        - Caption/dots come from onUpdate (deterministic, works in both
          scroll directions) instead of tl.call callbacks. */
-    var tl = gsap.timeline({
-      scrollTrigger: {
-        trigger: pin.parentElement,
-        start: 'top top',
-        end: 'bottom bottom',
-        scrub: true,
-        onUpdate: function (self) {
-          var t = self.progress * tl.duration();
-          var i = Math.floor((t - 0.215) / STEP + 1);
-          if (i < 0) i = 0;
-          if (i > n - 1) i = n - 1;
-          setStage(i);
+    var tl;
+    try {
+      // The enhanced class switches from the static, labelled stack to the
+      // pinned composition. It is removed again if timeline construction
+      // fails, leaving a useful page instead of a tall transparent spacer.
+      if (journey) {
+        journey.classList.remove('is-fallback');
+        journey.classList.add('is-enhancing');
+      }
+      tl = gsap.timeline({
+        scrollTrigger: {
+          trigger: pin.parentElement,
+          start: 'top top',
+          end: 'bottom bottom',
+          scrub: true,
+          onUpdate: function (self) {
+            var t = self.progress * tl.duration();
+            var i = Math.floor((t - 0.215) / STEP + 1);
+            if (i < 0) i = 0;
+            if (i > n - 1) i = n - 1;
+            setStage(i);
+          }
         }
+      });
+      layers.forEach(function (layer, i) {
+        var start = i * STEP;
+        if (i === 0) {
+          tl.set(layer, { opacity: 1, scale: 1.05 }, 0);
+        } else {
+          tl.fromTo(layer,
+            { opacity: 0, scale: 1.12 },
+            { opacity: 1, scale: 1.03, ease: 'none', duration: 0.08 }, start - 0.03);
+        }
+        if (i < n - 1) {
+          /* Ends after the next layer's fade-in has begun: no black flash. */
+          tl.to(layer, { opacity: 0, scale: 1.0, ease: 'none', duration: 0.08 }, start + 0.16);
+        }
+      });
+      if (journey) {
+        journey.classList.remove('is-enhancing');
+        journey.classList.add('is-enhanced');
       }
-    });
-    layers.forEach(function (layer, i) {
-      var start = i * STEP;
-      if (i === 0) {
-        tl.set(layer, { opacity: 1, scale: 1.05 }, 0);
-      } else {
-        tl.fromTo(layer,
-          { opacity: 0, scale: 1.12 },
-          { opacity: 1, scale: 1.03, ease: 'none', duration: 0.08 }, start - 0.03);
-      }
-      if (i < n - 1) {
-        /* Ends at start+0.24, i.e. AFTER the next layer's fade-in has begun
-           at start+0.20 — a true cross-fade. */
-        tl.to(layer, { opacity: 0, scale: 1.0, ease: 'none', duration: 0.08 }, start + 0.16);
-      }
-    });
+    } catch (err) {
+      if (tl && tl.kill) tl.kill();
+      layers.forEach(function (layer) {
+        layer.style.removeProperty('opacity');
+        layer.style.removeProperty('transform');
+      });
+      useFallback();
+      return;
+    }
     setStage(0);
 
     // Mobile browser chrome and orientation changes alter the sticky
@@ -858,6 +948,7 @@
     }
     window.addEventListener('resize', refreshJourney, { passive: true });
     window.addEventListener('orientationchange', refreshJourney, { passive: true });
+    if (window.visualViewport) window.visualViewport.addEventListener('resize', refreshJourney, { passive: true });
   }
 
   /* ---------------- Hero parallax (subtle) ---------------- */

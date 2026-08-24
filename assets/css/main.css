@@ -464,6 +464,14 @@ table { border-collapse: collapse; width: 100%; }
 }
 .nav.is-solid .nav-track:hover { background: var(--t-blue-bright); }
 .mobile-menu.open ~ .nav .nav-burger, .nav-burger { color: inherit; }
+.nav.menu-open {
+  background: var(--ink-950);
+  border-bottom-color: var(--line-dark);
+  color: #fff;
+}
+.nav.menu-open .logo-mark { display: block; }
+.nav.menu-open .logo-flag { display: none; }
+.nav.menu-open .nav-logo .wordmark { color: #fff; text-shadow: 0 1px 2px rgba(4,10,18,.45); }
 
 /* Mobile menu button */
 .nav-burger {
@@ -1542,22 +1550,18 @@ table { border-collapse: collapse; width: 100%; }
 
 /* ---------- 10. JOURNEY (SCENE 5 — cinematic scroll) ---------- */
 .journey { background: var(--ink-950); position: relative; }
-.journey-tall { height: 480vh; position: relative; }
+.journey-tall { height: auto; position: relative; }
 .journey-pin {
-  position: sticky;
-  top: 0;
-  height: 100vh;
-  height: 100svh;
+  position: relative;
+  height: auto;
   overflow: hidden;
 }
 .j-layer {
-  position: absolute;
-  inset: 0;
-  opacity: 0;
-  transform: scale(1.12);
-  /* No persistent will-change: five promoted full-viewport layers inside a
-     sticky container made Chrome drop/stale layers after fast reverse
-     scrolls (slides freezing mid-fade). Layers promote only while animating. */
+  position: relative;
+  min-height: clamp(420px, 70svh, 720px);
+  overflow: hidden;
+  opacity: 1;
+  transform: none;
 }
 .j-layer img {
   width: 100%; height: 100%;
@@ -1572,7 +1576,39 @@ table { border-collapse: collapse; width: 100%; }
   background: rgba(10,20,36,.25);
   mix-blend-mode: multiply;
 }
+.j-static-caption {
+  position: absolute;
+  left: var(--gutter);
+  right: calc(var(--gutter) + 32px);
+  bottom: calc(28px + env(safe-area-inset-bottom));
+  z-index: 4;
+  color: #fff;
+  max-width: min(640px, 86vw);
+}
+.j-static-caption .jsc-step {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: .6875rem;
+  letter-spacing: .2em;
+  line-height: 1.35;
+  text-transform: uppercase;
+  color: var(--t-azure-soft);
+}
+.j-static-caption h3 {
+  margin-top: 10px;
+  font-size: clamp(1.45rem, 6vw, 2.25rem);
+  font-weight: 800;
+  line-height: 1.04;
+}
+.j-static-caption p {
+  margin-top: 10px;
+  max-width: 46ch;
+  color: rgba(232,238,246,.82);
+  font-size: .875rem;
+  line-height: 1.55;
+}
 .j-caption {
+  display: none;
   position: absolute;
   left: var(--gutter);
   bottom: clamp(48px, 8vh, 96px);
@@ -1604,11 +1640,11 @@ table { border-collapse: collapse; width: 100%; }
   max-width: 46ch;
 }
 .j-progress {
+  display: none;
   position: absolute;
   right: var(--gutter);
   bottom: clamp(48px, 8vh, 96px);
   z-index: 5;
-  display: flex;
   flex-direction: column-reverse;
   gap: 8px;
   align-items: center;
@@ -2549,17 +2585,25 @@ table { border-collapse: collapse; width: 100%; }
 
 /* ---------- 19. REVEAL / MOTION UTILITIES ---------- */
 .reveal {
-  opacity: 0;
-  transform: translateY(26px);
+  opacity: 1;
+  transform: none;
   transition: opacity var(--dur) var(--ease), transform var(--dur) var(--ease);
   transition-delay: var(--d, 0ms);
 }
+.reveal-ready .reveal {
+  opacity: 0;
+  transform: translateY(26px);
+}
 .reveal.in { opacity: 1; transform: none; }
 .reveal-scale {
-  opacity: 0;
-  transform: scale(.965);
+  opacity: 1;
+  transform: none;
   transition: opacity .9s var(--ease), transform .9s var(--ease);
   transition-delay: var(--d, 0ms);
+}
+.reveal-ready .reveal-scale {
+  opacity: 0;
+  transform: scale(.965);
 }
 .reveal-scale.in { opacity: 1; transform: none; }
 
@@ -2583,7 +2627,7 @@ table { border-collapse: collapse; width: 100%; }
   :root { --nav-h: 64px; }
   .chapter-rail { display: none; }
   .cursor-light { display: none; }
-  .nav-links, .nav-utility .util-link { display: none; }
+  .nav-links, .nav-utility { display: none; }
   .nav-burger { display: inline-flex; }
   .nav-inner { gap: 16px; }
   .hero-meta { flex-wrap: wrap; gap: 12px 24px; padding: 20px 0; }
@@ -3184,6 +3228,34 @@ table { border-collapse: collapse; width: 100%; }
   .img-seq img { transition: none; }
   .o-dot { transition: none; }
 }
+.journey.is-enhancing .journey-tall,
+.journey.is-enhanced .journey-tall {
+  height: 480vh;
+}
+.journey.is-enhancing .journey-pin,
+.journey.is-enhanced .journey-pin {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  height: 100svh;
+}
+.journey.is-enhancing .j-layer,
+.journey.is-enhanced .j-layer {
+  position: absolute;
+  inset: 0;
+  min-height: 0;
+  opacity: 0;
+  transform: scale(1.12);
+  /* Layers promote only during the scrubbed transition. */
+}
+.journey.is-enhancing .j-layer:first-child,
+.journey.is-enhanced .j-layer:first-child { opacity: 1; }
+.journey.is-enhancing .j-static-caption,
+.journey.is-enhanced .j-static-caption { display: none; }
+.journey.is-enhancing .j-caption,
+.journey.is-enhanced .j-caption { display: block; }
+.journey.is-enhancing .j-progress,
+.journey.is-enhanced .j-progress { display: flex; }
 
 /* ============================================================
    23. MOBILE REFINEMENT
@@ -3240,7 +3312,10 @@ table { border-collapse: collapse; width: 100%; }
     --cmd-overlap: clamp(40px, 8vh, 64px);
   }
 
-  html, body { overflow-x: hidden; }
+  /* `hidden` on the root can become a scrolling ancestor on mobile and
+     disables sticky descendants. `clip` contains paint without changing
+     sticky's scroll chain. */
+  html, body { overflow-x: clip; }
   body { overflow-wrap: break-word; }
   .container, .nav-inner, .command-panel, .section > * { min-width: 0; }
   .split-grid { grid-template-columns: 1fr; gap: 34px; }
@@ -3270,6 +3345,7 @@ table { border-collapse: collapse; width: 100%; }
     padding-bottom: calc(24px + env(safe-area-inset-bottom));
     overscroll-behavior: contain;
   }
+  .mobile-menu .mm-utility { margin-top: 0; margin-bottom: 28px; }
   .mobile-menu li a { min-height: 54px; padding-block: 14px; }
 
   .hero-inner {
@@ -3323,7 +3399,10 @@ table { border-collapse: collapse; width: 100%; }
     padding-bottom: calc(22px + env(safe-area-inset-bottom));
   }
 
-  .journey-pin { height: 100svh; height: 100dvh; }
+  .journey.is-enhancing .journey-tall,
+  .journey.is-enhanced .journey-tall { height: 360vh; height: 360svh; }
+  .journey.is-enhancing .journey-pin,
+  .journey.is-enhanced .journey-pin { height: 100svh; height: 100dvh; }
   .j-caption {
     left: var(--gutter);
     right: calc(var(--gutter) + 32px);
