@@ -60,10 +60,10 @@
           ? 'Via ' + portName(r.via)
           : 'Direct';
         body.insertAdjacentHTML('beforeend',
-          '<tr><td>' + esc(portName(r.from)) + '</td>' +
-          '<td>' + esc(portName(r.to)) + '</td>' +
-          '<td class="rt-freq">' + esc(r.freq) + '</td>' +
-          '<td class="' + (r.via ? 'rt-via' : 'rt-direct') + '">' + esc(routing) + '</td></tr>');
+          '<tr><td data-label="From">' + esc(portName(r.from)) + '</td>' +
+          '<td data-label="To">' + esc(portName(r.to)) + '</td>' +
+          '<td data-label="Frequency / month" class="rt-freq">' + esc(r.freq) + '</td>' +
+          '<td data-label="Routing" class="' + (r.via ? 'rt-via' : 'rt-direct') + '">' + esc(routing) + '</td></tr>');
       });
     });
     // Regions present in the data but outside the canonical order
@@ -91,10 +91,10 @@
       if (!rows.length) return;
       var trs = rows.map(function (r) {
         return '<tr>' +
-          '<td>' + esc(portName(r.from)) + '</td>' +
-          '<td>' + esc(portName(r.to)) + '</td>' +
-          '<td>' + esc(r.freq) + '</td>' +
-          '<td class="' + (r.via ? '' : 'direct') + '">' + (r.via ? 'Via ' + esc(portName(r.via)) : 'Direct') + '</td>' +
+          '<td data-label="From">' + esc(portName(r.from)) + '</td>' +
+          '<td data-label="To">' + esc(portName(r.to)) + '</td>' +
+          '<td data-label="Frequency / month">' + esc(r.freq) + '</td>' +
+          '<td data-label="Routing" class="' + (r.via ? '' : 'direct') + '">' + (r.via ? 'Via ' + esc(portName(r.via)) : 'Direct') + '</td>' +
           '</tr>';
       }).join('');
       var note = region === 'Nusa Tenggara'
@@ -104,7 +104,7 @@
         '<section class="sched-section reveal">' +
         '<h2>' + esc(region) + '</h2>' +
         '<p class="ss-note">' + esc(note) + '</p>' +
-        '<div class="sched-table"><table>' +
+        '<div class="sched-table mobile-card-table"><table>' +
         '<caption>' + esc(region) + ' — published monthly departure frequencies</caption>' +
         '<thead><tr><th scope="col">From</th><th scope="col">To</th><th scope="col">Frequency / month</th><th scope="col">Routing</th></tr></thead>' +
         '<tbody>' + trs + '</tbody></table></div>' +
@@ -286,7 +286,7 @@
         b.setAttribute('aria-selected', String(on));
       });
       body.innerHTML = EQ_DATA[size].map(function (row) {
-        return '<tr><td>' + esc(row[0]) + '</td><td class="eq-val">' + esc(row[1]) + '</td></tr>';
+        return '<tr><td data-label="Specification">' + esc(row[0]) + '</td><td data-label="Value" class="eq-val">' + esc(row[1]) + '</td></tr>';
       }).join('');
       var cap = $('#eqCap');
       if (cap) cap.textContent = size + ' standard ISO container — ' + (size === '20' ? '20 foot' : '40 foot');

@@ -182,6 +182,9 @@
       'aria-label': p.name + ', ' + p.region + (p.headquarters ? ' — head office' : '')
     });
     g.setAttribute('transform', 'translate(' + p.x + ' ' + p.y + ')');
+    // Keep the visual marker precise while giving touch users a comfortable
+    // target on the compact mobile map.
+    g.appendChild(svg('circle', { class: 'p-hit', r: 16, fill: 'transparent', 'pointer-events': 'all' }));
     if (p.hub) g.appendChild(svg('circle', { class: 'p-halo', r: 13 }));
     g.appendChild(svg('circle', { class: 'p-core', r: p.hub ? 5.4 : 3.6 }));
     // Labels: Surabaya & Jakarta stay on by default; every other port's name

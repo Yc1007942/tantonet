@@ -415,13 +415,13 @@
     classes.forEach(function (c) {
       var tr = el('tr');
       tr.innerHTML =
-        '<td>' + esc(c.name) + '</td>' +
-        '<td><span class="cat-tag">' + esc(catName[c.category] || c.category) + '</span></td>' +
-        '<td>' + fmtNum(c.dwt) + '</td>' +
-        '<td>' + fmtNum(c.grt) + '</td>' +
-        '<td>' + fmtNum(c.teu) + '</td>' +
-        '<td>' + c.speed + '</td>' +
-        '<td>' + c.reefer + '</td>';
+        '<td data-label="Class">' + esc(c.name) + '</td>' +
+        '<td data-label="Category"><span class="cat-tag">' + esc(catName[c.category] || c.category) + '</span></td>' +
+        '<td data-label="DWT">' + fmtNum(c.dwt) + '</td>' +
+        '<td data-label="GRT">' + fmtNum(c.grt) + '</td>' +
+        '<td data-label="TEU">' + fmtNum(c.teu) + '</td>' +
+        '<td data-label="Speed (kn)">' + c.speed + '</td>' +
+        '<td data-label="RF plugs">' + c.reefer + '</td>';
       tbody.appendChild(tr);
     });
     var toggle = $('#fleetTableToggle');
@@ -559,14 +559,14 @@
             return;
           }
           var trs = rows.slice(0, 12).map(function (j) {
-            return '<tr><td>' + esc(j.vessel || j.name_kapal || '—') + '</td>' +
-              '<td>' + esc(j.route || (p.name + ' → ' + d.name)) + '</td>' +
-              '<td>' + esc(j.closing || j.tgl_closing || '—') + '</td>' +
-              '<td>' + esc(j.etd || '—') + '</td>' +
-              '<td>' + esc(j.eta || '—') + '</td></tr>';
+            return '<tr><td data-label="Vessel">' + esc(j.vessel || j.name_kapal || '—') + '</td>' +
+              '<td data-label="Route">' + esc(j.route || (p.name + ' → ' + d.name)) + '</td>' +
+              '<td data-label="Closing">' + esc(j.closing || j.tgl_closing || '—') + '</td>' +
+              '<td data-label="ETD">' + esc(j.etd || '—') + '</td>' +
+              '<td data-label="ETA">' + esc(j.eta || '—') + '</td></tr>';
           }).join('');
           box.innerHTML =
-            '<div class="schedule-result"><table><thead><tr>' +
+            '<div class="schedule-result"><table class="mobile-card-table"><thead><tr>' +
             '<th>Vessel</th><th>Route</th><th>Closing</th><th>ETD</th><th>ETA</th>' +
             '</tr></thead><tbody>' + trs + '</tbody></table></div>';
         })
@@ -649,8 +649,8 @@
       tbody.innerHTML = rows.map(function (row) {
         var etd = row.live && row.live.etd ? row.live.etd : '—';
         var eta = row.live && row.live.eta ? row.live.eta : '—';
-        return '<tr><td>' + esc(row.route) + '</td><td>' + esc(etd) + '</td><td>' + esc(eta) + '</td>' +
-          '<td><span class="status-chip ' + (row.live ? 'on-time' : 'loading') + '">' + (row.live ? 'scheduled' : 'frequency') + ' · ' + esc(row.freq) + '</span></td></tr>';
+        return '<tr><td data-label="Route">' + esc(row.route) + '</td><td data-label="ETD">' + esc(etd) + '</td><td data-label="ETA">' + esc(eta) + '</td>' +
+          '<td data-label="Status"><span class="status-chip ' + (row.live ? 'on-time' : 'loading') + '">' + (row.live ? 'scheduled' : 'frequency') + ' · ' + esc(row.freq) + '</span></td></tr>';
       }).join('');
     }
     renderRows(baseRows());
@@ -845,6 +845,19 @@
       }
     });
     setStage(0);
+
+    // Mobile browser chrome and orientation changes alter the sticky
+    // viewport after the timeline is created. Refresh its trigger geometry
+    // once the new visual viewport has settled.
+    var refreshTimer;
+    function refreshJourney() {
+      clearTimeout(refreshTimer);
+      refreshTimer = setTimeout(function () {
+        if (window.ScrollTrigger) window.ScrollTrigger.refresh();
+      }, 180);
+    }
+    window.addEventListener('resize', refreshJourney, { passive: true });
+    window.addEventListener('orientationchange', refreshJourney, { passive: true });
   }
 
   /* ---------------- Hero parallax (subtle) ---------------- */
