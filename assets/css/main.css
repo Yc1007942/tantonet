@@ -2615,6 +2615,27 @@ table { border-collapse: collapse; width: 100%; }
   .timeline li { grid-template-columns: 1fr; gap: 6px; }
   .hero-cta .btn { width: 100%; }
   .route-search .field { max-width: none; }
+  /* Make bottom CTA buttons stack beautifully on mobile */
+  .page-cta .pc-actions {
+    flex-direction: column;
+  }
+  .page-cta .pc-actions .btn {
+    width: 100%;
+  }
+
+  /* Prevent the email subject line from breaking mobile width */
+  .help-col .mono-sample,
+  .section-dark .mono-sample {
+    word-break: break-all;
+    white-space: normal;
+  }
+
+  /* Ensure the tags in the 'Why Tanto' list stack under the text instead of beside it */
+  .svc-item .si-side {
+    grid-column: 1 / -1; /* Span full width */
+    align-items: flex-start;
+    margin-top: 12px;
+  }
 }
 
 /* ---------- 21. REDUCED MOTION ---------- */
