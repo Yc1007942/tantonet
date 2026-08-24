@@ -17,9 +17,9 @@
    IMPORTANT (origin policy): the production API verifies the request
    Origin and only accepts requests from https://www.tantonet.com
    (anything else is answered with "Access denied"). When the new
-   site is deployed at tantonet.com the calls work natively. For
-   local development run `node dev-server.mjs` which proxies
-   /api/tcm/* to the production API with the correct Origin.
+   site is deployed at www.tantonet.com the calls work natively. Local
+   development and Vercel preview deployments proxy /api/tcm/* to the
+   production API with the correct Origin.
    ============================================================ */
 (function () {
   'use strict';
@@ -27,9 +27,12 @@
   var PROD = 'https://sync.tantooffice.com/api/tcm/';
 
   function endpointBase() {
-    // Local development (dev-server.mjs) proxies the API at /api/tcm/
-    var localDev = location.protocol === 'http:' && !/tantonet\.com$/i.test(location.hostname);
-    return localDev ? '/api/tcm/' : PROD;
+    // The upstream only accepts the exact www.tantonet.com Origin. Local
+    // development and Vercel previews use the matching same-origin proxy:
+    // dev-server.mjs locally, and api/tcm/[...path].js on Vercel.
+    var approvedProduction = location.protocol === 'https:' &&
+      location.hostname.toLowerCase() === 'www.tantonet.com';
+    return approvedProduction ? PROD : '/api/tcm/';
   }
 
   async function post(path, params) {

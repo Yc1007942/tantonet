@@ -31,7 +31,7 @@ Plus a separate customer dashboard at `/dashboard/index.php` (kept untouched) an
 | `https://sync.tantooffice.com/api/tcm/get_city_schedule` | POST `{act: 'city'}` | Port/city list (id + name) |
 | `https://sync.tantooffice.com/api/tcm/get_schedule_multi` | POST `{pol, listPod[], kota_asal}` | Live sailings for a port pair |
 
-The API verifies the request `Origin` and answers anything other than `https://www.tantonet.com` with "Access denied". Deployed at `tantonet.com` the calls work natively; locally, `dev-server.mjs` proxies them.
+The API verifies the request `Origin` and answers anything other than `https://www.tantonet.com` with "Access denied". The client calls the upstream directly on `www.tantonet.com`; local development uses `dev-server.mjs`, and Vercel previews use the deployed `/api/tcm/*` function proxy.
 
 ---
 
@@ -116,7 +116,7 @@ node dev-server.mjs        # → http://localhost:4173
 ### Production deployment
 
 1. Import the repository into Vercel with no build command; this is a static site.
-2. Set the production domain to `www.tantonet.com`; `vercel.json` contains the old-URL 301 redirects.
+2. Set the production domain to `www.tantonet.com`; `vercel.json` contains the old-URL 301 redirects. Preview domains such as `*.vercel.app` use the included `/api/tcm/*` proxy for live API calls.
 3. Keep `/dashboard/` on its existing application or add a Vercel rewrite to that origin.
 4. No build step, environment variables or API keys are required — the API client auto-detects origin.
 
