@@ -93,7 +93,18 @@ async function tryFile(req, res, urlPath) {
 const server = createServer(async (req, res) => {
   const urlPath = req.url || '/';
 
-  // API proxy
+  // 1. MUST BE FIRST: Handle CORS Preflight before proxying
+  if (req.method === 'OPTIONS' && urlPath.startsWith('/api/')) {
+    res.writeHead(204, {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type'
+    });
+    res.end();
+    return;
+  }
+
+  // 2. API proxy
   if (urlPath.startsWith('/api/tcm/')) {
     const target = API_BASE + urlPath.slice('/api/tcm/'.length);
     const chunks = [];
@@ -103,7 +114,8 @@ const server = createServer(async (req, res) => {
         const upstream = await fetch(target, {
           method: req.method === 'GET' ? 'GET' : 'POST',
           headers: {
-            'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+            // Dynamically inherit Content-Type so FormData boundaries don't break
+            'Content-Type': req.headers['content-type'] || 'application/x-www-form-urlencoded; charset=UTF-8',
             'Origin': 'https://www.tantonet.com',
             'Referer': 'https://www.tantonet.com/'
           },
@@ -120,15 +132,6 @@ const server = createServer(async (req, res) => {
         res.end(JSON.stringify({ status: false, msg: 'proxy error: ' + e.message }));
       }
     });
-    return;
-  }
-  if (req.method === 'OPTIONS' && urlPath.startsWith('/api/')) {
-    res.writeHead(204, {
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type'
-    });
-    res.end();
     return;
   }
 
