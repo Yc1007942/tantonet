@@ -1205,6 +1205,12 @@ table { border-collapse: collapse; width: 100%; }
   opacity: .26;
   stroke: var(--t-azure-soft);
 }
+.map-route.inland {
+  stroke: var(--t-azure-soft);
+  stroke-width: 1.15;
+  stroke-dasharray: 2 5;
+  opacity: .42;
+}
 .map-route.dim { opacity: .07; }
 /* Selected route — one continuous luminous yellow line (drawn in #mapSelG). */
 .map-sel {
@@ -1438,6 +1444,7 @@ table { border-collapse: collapse; width: 100%; }
 .network-legend .lg { display: inline-flex; align-items: center; gap: 8px; }
 .network-legend .sw { width: 18px; height: 2px; background: var(--t-azure); opacity: .8; }
 .network-legend .sw.via { background: repeating-linear-gradient(90deg, var(--t-azure-soft) 0 4px, transparent 4px 8px); }
+.network-legend .sw.inland { background: repeating-linear-gradient(90deg, var(--t-azure-soft) 0 2px, transparent 2px 7px); opacity: .7; }
 .network-legend .sw.sel { background: #ffd21f; box-shadow: 0 0 8px rgba(255, 210, 31, .8); }
 .network-legend .sw.port { width: 6px; height: 6px; border-radius: 50%; background: #fff; }
 

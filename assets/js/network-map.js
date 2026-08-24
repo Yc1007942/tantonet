@@ -102,6 +102,26 @@
     routePaths.push(entry);
   });
 
+  /* Inland offices are represented as ports for search and interaction, but
+     do not have a published maritime route in the schedule data. Keep that
+     distinction clear while still showing the requested illustrative link
+     from the Surabaya gateway to POSO. These paths stay out of routePaths so
+     they are never presented as a selectable direct service or dimmed as
+     part of a maritime result. */
+  var inlandConnectors = [{ from: 'SBY', to: 'PSO' }];
+  inlandConnectors.forEach(function (connectorDef) {
+    var A = byId[connectorDef.from], B = byId[connectorDef.to];
+    if (!A || !B) return;
+    var connector = svg('path', {
+      d: curve(A, B),
+      class: 'map-route inland',
+      'data-from': connectorDef.from,
+      'data-to': connectorDef.to,
+      'aria-hidden': 'true'
+    });
+    routesG.appendChild(connector);
+  });
+
   /* ---------- service graph (for transit-chain routing) ----------
      Every published service becomes an edge between its endpoints,
      carrying the full call sequence (origin → via → destination).
