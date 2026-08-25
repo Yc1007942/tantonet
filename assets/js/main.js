@@ -10,8 +10,8 @@
   var NETWORK = window.TANTO_NETWORK || { ports: [], routes: [] };
   var FLEET = window.TANTO_FLEET || { classes: [], categories: [] };
 
-  /* GSAP plugins — ScrollTrigger drives the cinematic journey scroll.
-     Must be registered before any timeline is built with scrollTrigger config. */
+  /* GSAP plugins — ScrollTrigger supplies the cinematic journey's measured
+     scroll range; the layers themselves are rendered from one scroll scalar. */
   if (window.gsap && window.ScrollTrigger) window.gsap.registerPlugin(window.ScrollTrigger);
 
   var reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -884,7 +884,8 @@
   function initJourney() {
     var pin = $('#journeyPin');
     if (!pin) return;
-    var journey = pin.closest('.journey'); // <-- DEFINED HERE
+    var journey = pin.closest('.journey');
+    var journeyTall = pin.parentElement;
     var layers = $all('.j-layer', pin);
     var caption = {
       step: $('#jcStep'), title: $('#jcTitle'), text: $('#jcText')
@@ -914,6 +915,11 @@
         journey.classList.remove('is-enhancing', 'is-enhanced');
         journey.classList.add('is-fallback');
       }
+      layers.forEach(function (layer) {
+        layer.style.removeProperty('opacity');
+        layer.style.removeProperty('transform');
+        layer.style.removeProperty('will-change');
+      });
       setStage(0);
     }
 
@@ -923,68 +929,121 @@
     }
 
     var n = layers.length;
-    var STEP = 0.92 / (n - 1); // 0.23 for five stages
+    var targetProgress = 0;
+    var displayedProgress = 0;
+    var frame = 0;
+    var trigger;
 
-    /* One 1:1 scrubbed timeline drives all five cross-fades. */
-    var tl;
+    function clamp(v, min, max) {
+      return Math.max(min, Math.min(max, v));
+    }
+
+    /* Render from a single scalar instead of a multi-tween timeline. This is
+       deliberately boring: at every frame the current and next layer are
+       assigned complementary opacities, so a refresh or a fast reverse scroll
+       can never leave the composition with five transparent layers. */
+    function render(progress) {
+      progress = clamp(Number(progress) || 0, 0, 1);
+      var position = progress * (n - 1);
+      var index = Math.min(n - 1, Math.floor(position));
+      var blend = index >= n - 1 ? 0 : position - index;
+
+      layers.forEach(function (layer, i) {
+        var opacity = 0;
+        var scale = 1.045;
+        if (i === index) {
+          opacity = 1 - blend;
+          scale = 1.045 - blend * 0.025;
+        } else if (i === index + 1 && index < n - 1) {
+          opacity = blend;
+          scale = 1.07 - blend * 0.025;
+        }
+        layer.style.opacity = String(opacity);
+        layer.style.transform = 'scale(' + scale.toFixed(4) + ')';
+        layer.style.willChange = opacity > 0 ? 'opacity, transform' : 'auto';
+      });
+
+      // Change copy at the midpoint of a crossfade so it belongs to the image
+      // that is visually dominant, in either scroll direction.
+      setStage(Math.min(n - 1, Math.floor(position + 0.5)));
+    }
+
+    function stopFrame() {
+      frame = 0;
+    }
+
+    function animateFrame() {
+      frame = 0;
+      var delta = targetProgress - displayedProgress;
+      if (Math.abs(delta) < 0.0005) {
+        displayedProgress = targetProgress;
+        render(displayedProgress);
+        return;
+      }
+      // This interpolation is intentionally independent from frame rate. It
+      // makes touch momentum and mouse-wheel jumps glide without desyncing.
+      displayedProgress += delta * 0.22;
+      render(displayedProgress);
+      frame = window.requestAnimationFrame(animateFrame);
+    }
+
+    function setProgress(progress, immediate) {
+      targetProgress = clamp(progress, 0, 1);
+      if (immediate) {
+        displayedProgress = targetProgress;
+        stopFrame();
+        render(displayedProgress);
+      } else if (!frame) {
+        frame = window.requestAnimationFrame(animateFrame);
+      }
+    }
+
     try {
       if (journey) {
         journey.classList.remove('is-fallback');
         journey.classList.add('is-enhancing');
       }
-      tl = gsap.timeline({
-        scrollTrigger: {
-          trigger: pin.parentElement,
-          start: 'top top',
-          end: 'bottom bottom',
-          scrub: true,
-          onUpdate: function (self) {
-            var t = self.progress * tl.duration();
-            var i = Math.floor((t - 0.215) / STEP + 1);
-            if (i < 0) i = 0;
-            if (i > n - 1) i = n - 1;
-            setStage(i);
-          }
-        }
+      // Set a valid first frame before ScrollTrigger measures anything. This
+      // prevents a blank first paint on slow mobile image/script loads.
+      render(0);
+      trigger = ScrollTrigger.create({
+        trigger: journeyTall,
+        start: 'top top',
+        end: 'bottom bottom',
+        invalidateOnRefresh: true,
+        onUpdate: function (self) { setProgress(self.progress, false); },
+        onRefresh: function (self) { setProgress(self.progress, true); },
+        onEnter: function (self) { setProgress(self.progress, true); },
+        onEnterBack: function (self) { setProgress(self.progress, true); },
+        onLeave: function () { setProgress(1, false); },
+        onLeaveBack: function () { setProgress(0, false); }
       });
-      layers.forEach(function (layer, i) {
-        var start = i * STEP;
-        if (i === 0) {
-          tl.set(layer, { opacity: 1, scale: 1.05 }, 0);
-        } else {
-          tl.fromTo(layer,
-            { opacity: 0, scale: 1.12 },
-            { opacity: 1, scale: 1.03, ease: 'none', duration: 0.08 }, start - 0.03);
-        }
-        if (i < n - 1) {
-          tl.to(layer, { opacity: 0, scale: 1.0, ease: 'none', duration: 0.08 }, start + 0.16);
-        }
-      });
+      if (!trigger || !trigger.refresh) throw new Error('Journey ScrollTrigger did not initialize');
       if (journey) {
         journey.classList.remove('is-enhancing');
-        journey.classList.add('is-enhanced'); // <-- CSS NOW SEES THIS AND APPLIES HEIGHT
+        journey.classList.add('is-enhanced');
       }
     } catch (err) {
-      if (tl && tl.kill) tl.kill();
-      layers.forEach(function (layer) {
-        layer.style.removeProperty('opacity');
-        layer.style.removeProperty('transform');
-      });
+      if (trigger && trigger.kill) trigger.kill();
       useFallback();
       return;
     }
-    setStage(0);
+    // Honour a restored browser scroll position instead of forcing the
+    // journey back to stage one after ScrollTrigger has measured it.
+    setProgress(trigger && typeof trigger.progress === 'number' ? trigger.progress : 0, true);
 
     var refreshTimer;
     function refreshJourney() {
       clearTimeout(refreshTimer);
       refreshTimer = setTimeout(function () {
-        if (window.ScrollTrigger) window.ScrollTrigger.refresh();
+        if (window.ScrollTrigger) window.ScrollTrigger.refresh(true);
       }, 180);
     }
     window.addEventListener('resize', refreshJourney, { passive: true });
     window.addEventListener('orientationchange', refreshJourney, { passive: true });
     if (window.visualViewport) window.visualViewport.addEventListener('resize', refreshJourney, { passive: true });
+    window.addEventListener('pageshow', refreshJourney, { passive: true });
+    window.addEventListener('load', refreshJourney, { passive: true });
   }
 
   /* ---------------- Hero parallax (subtle) ---------------- */
