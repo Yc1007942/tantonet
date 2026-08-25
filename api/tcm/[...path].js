@@ -18,8 +18,11 @@ function readBody(req) {
 }
 
 module.exports = async function handler(req, res) {
-  const pathValue = req.query && req.query.path;
-  const endpoint = Array.isArray(pathValue) ? pathValue.join('/') : String(pathValue || '');
+  // Vercel exposes catch-all parameters differently between the Node and
+  // Web-handler runtimes. Resolve from the request URL first so the proxy is
+  // stable on both preview and production deployments.
+  const requestUrl = new URL(req.url || '/', `https://${req.headers.host || 'localhost'}`);
+  const endpoint = requestUrl.pathname.replace(/^\/api\/tcm\//, '').replace(/\/+$/, '');
 
   if (req.method === 'OPTIONS') {
     res.status(204)
