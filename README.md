@@ -1,5 +1,5 @@
 # PT Tanto Intim Line — Website Redesign 
-..
+
 A complete redesign of [tantonet.com](https://www.tantonet.com/) as a premium "maritime-tech" brand: a cinematic 10-scene homepage, a flagship interactive Indonesia network map, and a full set of utility subpages — all built on **real, verified Tanto data** with **no fabricated content** and **no fake backend**.
 
 > **Tanto is not merely a company that owns ships. Tanto is infrastructure connecting Indonesia.**
