@@ -549,10 +549,14 @@ table { border-collapse: collapse; width: 100%; }
 .hero-media {
   position: absolute; inset: 0;
   z-index: 0;
+  width: 100%; height: 100%;
+  overflow: hidden;
+  background: var(--ink-950) url("../img/hero-poster.webp") center / cover no-repeat;
 }
 .hero-inner { position: relative; z-index: 2; }
 .hero-media img {
   width: 100%; height: 100%;
+  min-width: 100%; min-height: 100%; max-width: none;
   object-fit: cover;
   object-position: center 42%;
   transform: scale(1.07);
@@ -566,6 +570,7 @@ table { border-collapse: collapse; width: 100%; }
 .hero-video {
   position: absolute; inset: 0;
   width: 100%; height: 100%;
+  min-width: 100%; min-height: 100%; max-width: none;
   object-fit: cover;
   object-position: center 42%;
   display: block;
@@ -3611,6 +3616,35 @@ table { border-collapse: collapse; width: 100%; }
   .mobile-menu .mm-utility { grid-template-columns: 1fr; }
   .hero-meta { font-size: .625rem; }
   .fleet-cats { grid-auto-columns: minmax(154px, 78vw); }
+}
+
+/* Final mobile guardrails. These apply after the page-specific breakpoints so
+   every route inherits the same media sizing, wrapping and touch affordances. */
+@media (max-width: 900px) {
+  html, body { width: 100%; max-width: 100%; }
+  main, section, article, aside, footer, header, nav,
+  .container, .section > *, .page-hero > *, .page-cta > * {
+    min-width: 0;
+  }
+  img, svg, video, canvas, iframe { max-width: 100%; }
+  .hero { overflow: hidden; }
+  .hero-media,
+  .hero-media img,
+  .hero-video {
+    width: 100%;
+    height: 100%;
+    min-width: 100%;
+    min-height: 100%;
+  }
+  .hero-media img, .hero-video {
+    object-fit: cover;
+    object-position: center 50%;
+  }
+  .hero-sub, .lede, .stat-detail, .page-hero .lede,
+  .news-item h3, .news-item p { max-width: 100%; overflow-wrap: anywhere; }
+  .btn, .nav-burger, .command-tabs button, .fleet-cat,
+  .eq-tabs button, .region-filters button { min-height: 44px; }
+  .btn-lg { min-height: 48px; }
 }
 
 @media (max-height: 680px) and (max-width: 900px) {

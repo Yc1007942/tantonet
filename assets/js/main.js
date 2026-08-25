@@ -938,6 +938,13 @@
       return Math.max(min, Math.min(max, v));
     }
 
+    function readJourneyProgress() {
+      var scrollY = window.pageYOffset || document.documentElement.scrollTop || 0;
+      var top = journeyTall.getBoundingClientRect().top + scrollY;
+      var travel = Math.max(1, journeyTall.offsetHeight - pin.offsetHeight);
+      return clamp((scrollY - top) / travel, 0, 1);
+    }
+
     /* Render from a single scalar instead of a multi-tween timeline. This is
        deliberately boring: at every frame the current and next layer are
        assigned complementary opacities, so a refresh or a fast reverse scroll
@@ -1012,7 +1019,7 @@
         end: 'bottom bottom',
         invalidateOnRefresh: true,
         onUpdate: function (self) { setProgress(self.progress, false); },
-        onRefresh: function (self) { setProgress(self.progress, true); },
+        onRefresh: function () { setProgress(readJourneyProgress(), true); },
         onEnter: function (self) { setProgress(self.progress, true); },
         onEnterBack: function (self) { setProgress(self.progress, true); },
         onLeave: function () { setProgress(1, false); },
@@ -1028,9 +1035,9 @@
       useFallback();
       return;
     }
-    // Honour a restored browser scroll position instead of forcing the
-    // journey back to stage one after ScrollTrigger has measured it.
-    setProgress(trigger && typeof trigger.progress === 'number' ? trigger.progress : 0, true);
+    // Honour a restored browser scroll position, while guaranteeing that a
+    // page opened above the journey starts on its first slide.
+    setProgress(readJourneyProgress(), true);
 
     var refreshTimer;
     function refreshJourney() {
@@ -1044,6 +1051,37 @@
     if (window.visualViewport) window.visualViewport.addEventListener('resize', refreshJourney, { passive: true });
     window.addEventListener('pageshow', refreshJourney, { passive: true });
     window.addEventListener('load', refreshJourney, { passive: true });
+  }
+
+  /* ---------------- Hero video ---------------- */
+  function initHeroVideo() {
+    var video = $('.hero-video');
+    if (!video) return;
+    var media = video.parentElement;
+
+    function fallback() {
+      if (media) media.classList.add('video-fallback');
+      video.style.display = 'none';
+    }
+
+    video.addEventListener('error', fallback, { once: true });
+    video.addEventListener('loadedmetadata', function () {
+      if (media) media.classList.add('video-ready');
+    }, { once: true });
+
+    // Autoplay can be denied by a browser policy. Keep the poster visible in
+    // that case, and retry after bfcache/visibility restores without throwing.
+    function tryPlay() {
+      if (video.readyState < 2 || document.hidden) return;
+      var result = video.play();
+      if (result && typeof result.catch === 'function') result.catch(function () {
+        if (media) media.classList.add('video-autoplay-blocked');
+      });
+    }
+    video.addEventListener('loadeddata', tryPlay, { once: true });
+    document.addEventListener('visibilitychange', tryPlay, { passive: true });
+    window.addEventListener('pageshow', tryPlay, { passive: true });
+    tryPlay();
   }
 
   /* ---------------- Hero parallax (subtle) ---------------- */
@@ -1125,6 +1163,7 @@
     initTimeline();
     initNews();
     initJourney();
+    initHeroVideo();
     initHeroParallax();
     initContainerFormatters();
     initLiveClock();
