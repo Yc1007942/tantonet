@@ -884,7 +884,7 @@
   function initJourney() {
     var pin = $('#journeyPin');
     if (!pin) return;
-    var journey = pin.closest ? pin.closest('.journey') : pin.parentElement.parentElement;
+    var journey = pin.closest('.journey'); // <-- DEFINED HERE
     var layers = $all('.j-layer', pin);
     var caption = {
       step: $('#jcStep'), title: $('#jcTitle'), text: $('#jcText')
@@ -898,6 +898,7 @@
       { step: '04 / Vessel', title: 'A Fleet Built for These Waters.', text: 'From shallow-draft river boats to 1,500 TEU mainliners — 60+ vessels, 70,000+ TEU.' },
       { step: '05 / Archipelago', title: 'From West to East.', text: '39 ports across the Indonesian archipelago. One network, one standard.' }
     ];
+
     function setStage(i) {
       if (!caption.step || i === currentStage) return;
       currentStage = i;
@@ -924,20 +925,9 @@
     var n = layers.length;
     var STEP = 0.92 / (n - 1); // 0.23 for five stages
 
-    /* One 1:1 scrubbed timeline drives all five cross-fades. Design notes:
-       - scrub: true (no lag tween): the playhead is a pure function of the
-         scroll position, so fast reverse scrolls can never desync or leave a
-         slide frozen mid-fade (the old scrub: 0.6 lerp + tl.call() combo did).
-       - Fade windows OVERLAP (this layer's fade-out ends after the next
-         layer's fade-in has started), so a slide is always on screen —
-         no black flash between stages even on a fast flick.
-       - Caption/dots come from onUpdate (deterministic, works in both
-         scroll directions) instead of tl.call callbacks. */
+    /* One 1:1 scrubbed timeline drives all five cross-fades. */
     var tl;
     try {
-      // The enhanced class switches from the static, labelled stack to the
-      // pinned composition. It is removed again if timeline construction
-      // fails, leaving a useful page instead of a tall transparent spacer.
       if (journey) {
         journey.classList.remove('is-fallback');
         journey.classList.add('is-enhancing');
@@ -967,13 +957,12 @@
             { opacity: 1, scale: 1.03, ease: 'none', duration: 0.08 }, start - 0.03);
         }
         if (i < n - 1) {
-          /* Ends after the next layer's fade-in has begun: no black flash. */
           tl.to(layer, { opacity: 0, scale: 1.0, ease: 'none', duration: 0.08 }, start + 0.16);
         }
       });
       if (journey) {
         journey.classList.remove('is-enhancing');
-        journey.classList.add('is-enhanced');
+        journey.classList.add('is-enhanced'); // <-- CSS NOW SEES THIS AND APPLIES HEIGHT
       }
     } catch (err) {
       if (tl && tl.kill) tl.kill();
@@ -986,9 +975,6 @@
     }
     setStage(0);
 
-    // Mobile browser chrome and orientation changes alter the sticky
-    // viewport after the timeline is created. Refresh its trigger geometry
-    // once the new visual viewport has settled.
     var refreshTimer;
     function refreshJourney() {
       clearTimeout(refreshTimer);
