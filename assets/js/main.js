@@ -307,46 +307,67 @@
   /* ---------------- Scale / stats ---------------- */
   function fmtNum(n) { return n.toLocaleString('en-US'); }
 
-  function countUp(node, target, dur) {
-    if (reducedMotion) { node.textContent = fmtNum(target); return; }
-    var t0 = null;
-    function step(ts) {
-      if (!t0) t0 = ts;
-      var p = Math.min(1, (ts - t0) / dur);
-      var e = 1 - Math.pow(1 - p, 3);
-      node.textContent = fmtNum(Math.round(target * e));
-      if (p < 1) requestAnimationFrame(step);
-    }
-    requestAnimationFrame(step);
+  // Capacity and distance metrics use locale grouping, while calendar years
+  // are identifiers and must remain ungrouped (for example, 1971).
+  function formatCount(node, value) {
+    return node.getAttribute('data-format') === 'year' ? String(value) : fmtNum(value);
   }
 
-  /* ---------------- Scale / stats ---------------- */
-  function fmtNum(n) { return n.toLocaleString('en-US'); }
-
   function countUp(node, target, dur) {
-    if (reducedMotion) { node.textContent = fmtNum(target); return; }
+    if (reducedMotion) { node.textContent = formatCount(node, target); return; }
     var t0 = null;
     function step(ts) {
       if (!t0) t0 = ts;
       var p = Math.min(1, (ts - t0) / dur);
       var e = 1 - Math.pow(1 - p, 3);
-      node.textContent = fmtNum(Math.round(target * e));
+      node.textContent = formatCount(node, Math.round(target * e));
       if (p < 1) requestAnimationFrame(step);
     }
     requestAnimationFrame(step);
   }
 
   function initStats() {
-    var observer = new IntersectionObserver(function (entries) {
+    var observer = null;
+
+    function play(node) {
+      var target = parseInt(node.getAttribute('data-count'), 10);
+      if (!isNaN(target)) countUp(node, target, 1600);
+    }
+
+    function watch(node) {
+      if (!node || node.getAttribute('data-count-watched') === 'true') return;
+      node.setAttribute('data-count-watched', 'true');
+      if (reducedMotion || !('IntersectionObserver' in window)) {
+        node.querySelectorAll('.stat-count').forEach(play);
+        return;
+      }
+      observer.observe(node);
+    }
+
+    observer = ('IntersectionObserver' in window) ? new IntersectionObserver(function (entries) {
       entries.forEach(function (en) {
         if (!en.isIntersecting) return;
         observer.unobserve(en.target);
-        en.target.querySelectorAll('.stat-count').forEach(function (c) {
-          var target = parseInt(c.getAttribute('data-count'), 10);
-          if (!isNaN(target)) countUp(c, target, 1600);
-        });
+        en.target.querySelectorAll('.stat-count').forEach(play);
       });
-    }, { threshold: 0.3 });
+    }, { threshold: 0.3 }) : null;
+
+    function prepareMetric(node) {
+      if (!node || node.getAttribute('data-count-ready') === 'true') return;
+      var raw = node.textContent.trim();
+      var match = raw.match(/^([^0-9]*)([0-9][0-9,]*)(.*)$/);
+      if (!match) return;
+      var target = parseInt(match[2].replace(/,/g, ''), 10);
+      // Years and phone-area codes are labels, not count-up metrics.
+      if (isNaN(target) || (target >= 1900 && target <= 2100) || /^\(\d+\)$/.test(raw)) return;
+      var count = el('span', { class: 'stat-count', 'data-count': String(target) }, '0');
+      node.textContent = '';
+      if (match[1]) node.appendChild(document.createTextNode(match[1]));
+      node.appendChild(count);
+      if (match[3]) node.appendChild(el('span', { class: 'suffix' }, match[3]));
+      node.setAttribute('data-count-ready', 'true');
+      watch(node);
+    }
 
     // 1. Dynamic homepage stat rows (from CONTENT.stats)
     var wrap = $('#statRows');
@@ -355,7 +376,9 @@
       var rows = stats.map(function (s) {
         var row = el('div', { class: 'stat-row reveal' });
         var num = el('div', { class: 'stat-num' });
-        var numInner = el('span', { 'data-count': String(s.value), class: 'stat-count' });
+        var countAttrs = { 'data-count': String(s.value), class: 'stat-count' };
+        if (s.format === 'year') countAttrs['data-format'] = 'year';
+        var numInner = el('span', countAttrs);
         numInner.textContent = s.format === 'year' ? String(s.value) : '0';
         if (s.suffix) num.appendChild(el('span', { class: 'suffix' }, s.suffix));
         num.insertBefore(numInner, s.suffix ? num.firstChild : null);
@@ -366,7 +389,7 @@
         row.appendChild(meta);
         return row;
       });
-      rows.forEach(function (r) { wrap.appendChild(r); observer.observe(r); });
+      rows.forEach(function (r) { wrap.appendChild(r); watch(r); });
     }
 
     // 2. Static subpage stat numbers (e.g. .fact-strip on /about/, /history/, etc.)
@@ -380,9 +403,13 @@
         var suffix = raw.replace(/[0-9,\s]/g, ''); // extracts '+', 'M+', etc.
         b.innerHTML = '<span class="stat-count" data-count="' + num + '">0</span>' + (suffix ? '<span class="suffix">' + esc(suffix) + '</span>' : '');
         var parentItem = b.closest('.fs-item') || b;
-        observer.observe(parentItem);
+        watch(parentItem);
       }
     });
+
+    // Page heroes carry the same compact figures as the homepage scale.
+    // Convert only standalone metric labels; phone codes and years stay static.
+    $all('.ph-meta b').forEach(prepareMetric);
   }
 
   /* ---------------- Fleet ---------------- */
@@ -845,7 +872,7 @@
       { step: '01 / Container', title: 'It Starts With A Container.', text: 'More than 60,000 ISO containers of every size — the average one under five years old.' },
       { step: '02 / Port', title: 'The Port Is Where It Moves.', text: 'Fully-owned handling equipment at every port on the network — reach stackers and forklifts, with operators certified and recertified every year.' },
       { step: '03 / Crane', title: 'Loaded, Stowed, Secured.', text: 'Geared vessels load and discharge at the berth — no waiting on third-party equipment.' },
-      { step: '04 / Vessel', title: 'A Fleet Built for These Waters.', text: 'From shallow-draft river boats to 1,500 TEU mainliners — 60+ vessels, 33,000+ TEU.' },
+      { step: '04 / Vessel', title: 'A Fleet Built for These Waters.', text: 'From shallow-draft river boats to 1,500 TEU mainliners — 60+ vessels, 70,000+ TEU.' },
       { step: '05 / Archipelago', title: 'From West to East.', text: '39 ports across the Indonesian archipelago. One network, one standard.' }
     ];
     function setStage(i) {

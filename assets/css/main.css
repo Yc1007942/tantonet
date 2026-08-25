@@ -2618,6 +2618,9 @@ table { border-collapse: collapse; width: 100%; }
 @media (max-width: 1180px) {
   .nav-links a, .nav-links .nav-drop > button { padding: 10px 10px; font-size: .8125rem; }
   .fleet-grid-fallback { grid-template-columns: 1fr; }
+  /* The fixed chapter locator would overlap the content column once the
+     desktop container has less than ~1,180px of usable width. */
+  .chapter-rail { display: none; }
 }
 @media (max-width: 1080px) {
   .scale-grid { grid-template-columns: 1fr; }

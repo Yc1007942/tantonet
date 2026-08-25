@@ -1,7 +1,7 @@
 {
   "meta": {
     "source": "tantonet.com we-have.php 'Our Vessels' table, extracted 2026-08-17",
-    "note": "Fleet class specifications as published by Tanto. Total fleet: 60+ vessels, 33,000+ TEU combined capacity (company figure, 2026).",
+    "note": "Fleet class specifications as published by Tanto. Total fleet: 60+ vessels, 70,000+ TEU combined capacity (company figure, 2026).",
     "vesselPhotos": [
       { "file": "assets/img/hero-cahaya.webp", "name": "MT. TANTO CAHAYA", "caption": "Container vessel under way" },
       { "file": "assets/img/vessel-fajar1.webp", "name": "MT. TANTO FAJAR 1", "caption": "Geared vessel loading at port" },
