@@ -206,6 +206,22 @@
     }
     setActive(sections[0].id);
 
+    // The rail is a temporary scroll aid. Keep it out of the reader's way
+    // between scroll gestures, while retaining keyboard/focus access.
+    var scrollTimer = 0;
+    function showWhileScrolling() {
+      rail.classList.add('is-scrolling');
+      window.clearTimeout(scrollTimer);
+      scrollTimer = window.setTimeout(function () {
+        rail.classList.remove('is-scrolling');
+      }, 850);
+    }
+    window.addEventListener('scroll', showWhileScrolling, { passive: true });
+    rail.addEventListener('focusin', function () { rail.classList.add('is-scrolling'); });
+    rail.addEventListener('focusout', function (event) {
+      if (!rail.contains(event.relatedTarget)) showWhileScrolling();
+    });
+
     if (!('IntersectionObserver' in window)) return;
     var io = new IntersectionObserver(function (entries) {
       entries.forEach(function (entry) {
@@ -329,6 +345,13 @@
   function initStats() {
     var observer = null;
 
+    function statDetailMarkup(detail) {
+      var safe = esc(detail);
+      // Keep the editorial wording, but give the age claim its own reveal so
+      // it lands after the ISO-container counter instead of appearing static.
+      return safe.replace(/under five years/gi, '<span class="stat-age">under five years</span>');
+    }
+
     function play(node) {
       var target = parseInt(node.getAttribute('data-count'), 10);
       if (!isNaN(target)) countUp(node, target, 1600);
@@ -385,7 +408,7 @@
         row.appendChild(num);
         var meta = el('div');
         meta.appendChild(el('p', { class: 'stat-label' }, esc(s.label)));
-        meta.appendChild(el('p', { class: 'stat-detail' }, esc(s.detail)));
+        meta.appendChild(el('p', { class: 'stat-detail' }, statDetailMarkup(s.detail)));
         row.appendChild(meta);
         return row;
       });

@@ -725,7 +725,17 @@ table { border-collapse: collapse; width: 100%; }
   width: 112px;
   transform: translateY(-50%);
   color: rgba(232,238,246,.55);
+  opacity: 0;
+  visibility: hidden;
   pointer-events: none;
+  transition: opacity .6s var(--ease), visibility 0s linear .6s;
+}
+.chapter-rail.is-scrolling,
+.chapter-rail:focus-within {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+  transition-delay: 0s;
 }
 .chapter-rail-head {
   display: flex;
@@ -1527,6 +1537,21 @@ table { border-collapse: collapse; width: 100%; }
   font-size: .9375rem;
   color: var(--slate-700);
   max-width: 52ch;
+}
+.stat-age {
+  display: inline-block;
+}
+.reveal-ready .stat-age {
+  opacity: 0;
+  transform: translateY(.45em);
+  clip-path: inset(0 100% 0 0);
+  transition: opacity .65s var(--ease), transform .65s var(--ease), clip-path .8s var(--ease);
+}
+.reveal-ready .stat-row.in .stat-age {
+  opacity: 1;
+  transform: none;
+  clip-path: inset(0);
+  transition-delay: .22s;
 }
 .scale-photo {
   margin-top: clamp(48px, 6vw, 80px);
@@ -2752,6 +2777,7 @@ table { border-collapse: collapse; width: 100%; }
     transition-duration: .01ms !important;
   }
   .reveal, .reveal-scale { opacity: 1; transform: none; }
+  .reveal-ready .stat-age { opacity: 1; transform: none; clip-path: none; transition: none; }
   .hero-media img { transform: none; animation: none; }
   .hero-video { display: none !important; }
   body::before { display: none; }
