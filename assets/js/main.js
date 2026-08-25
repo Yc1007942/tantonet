@@ -884,7 +884,7 @@
   function initJourney() {
     var pin = $('#journeyPin');
     if (!pin) return;
-    var journey = pin.closest ? pin.closest('.journey') : pin.parentElement.parentElement;
+    var journey = pin.closest('.journey'); // <-- DEFINED HERE
     var layers = $all('.j-layer', pin);
     var caption = {
       step: $('#jcStep'), title: $('#jcTitle'), text: $('#jcText')
@@ -898,6 +898,7 @@
       { step: '04 / Vessel', title: 'A Fleet Built for These Waters.', text: 'From shallow-draft river boats to 1,500 TEU mainliners — 60+ vessels, 70,000+ TEU.' },
       { step: '05 / Archipelago', title: 'From West to East.', text: '39 ports across the Indonesian archipelago. One network, one standard.' }
     ];
+
     function setStage(i) {
       if (!caption.step || i === currentStage) return;
       currentStage = i;
@@ -913,10 +914,6 @@
         journey.classList.remove('is-enhancing', 'is-enhanced');
         journey.classList.add('is-fallback');
       }
-      layers.forEach(function (layer) {
-        layer.style.removeProperty('opacity');
-        layer.style.removeProperty('transform');
-      });
       setStage(0);
     }
 
@@ -926,100 +923,67 @@
     }
 
     var n = layers.length;
-    var trigger;
-    var mobileJourney = window.matchMedia('(max-width: 900px)').matches;
-    var targetProgress = 0;
-    var displayedProgress = 0;
-    var smoothFrame = 0;
+    var STEP = 0.92 / (n - 1); // 0.23 for five stages
 
-    /* Render the crossfade directly from ScrollTrigger progress. This avoids
-       timeline-position drift when mobile browser chrome changes the sticky
-       viewport. Adjacent layers always sum to 1, so a fast flick cannot leave
-       a black frame or make only the final layer visible. */
-    function render(progress) {
-      progress = Number(progress);
-      if (!isFinite(progress)) progress = 0;
-      progress = Math.max(0, Math.min(1, progress));
-      var position = progress * (n - 1);
-      var base = Math.min(n - 1, Math.floor(position));
-      var blend = base >= n - 1 ? 0 : position - base;
-
-      layers.forEach(function (layer, i) {
-        var opacity = 0;
-        if (i === base) opacity = 1 - blend;
-        else if (i === base + 1) opacity = blend;
-        var scale = 1.04 + (1 - opacity) * .05;
-        layer.style.opacity = opacity.toFixed(4);
-        layer.style.transform = 'scale(' + scale.toFixed(4) + ')';
-      });
-      setStage(Math.min(n - 1, Math.round(position)));
-    }
-
-    function animateProgress(progress, immediate) {
-      progress = Number(progress);
-      if (!isFinite(progress)) progress = 0;
-      targetProgress = Math.max(0, Math.min(1, progress));
-      if (immediate || !mobileJourney) {
-        displayedProgress = targetProgress;
-        render(displayedProgress);
-        return;
-      }
-      if (smoothFrame) return;
-      function step() {
-        smoothFrame = 0;
-        displayedProgress += (targetProgress - displayedProgress) * .24;
-        if (Math.abs(targetProgress - displayedProgress) < .001) {
-          displayedProgress = targetProgress;
-        } else {
-          smoothFrame = window.requestAnimationFrame(step);
-        }
-        render(displayedProgress);
-      }
-      smoothFrame = window.requestAnimationFrame(step);
-    }
-
+    /* One 1:1 scrubbed timeline drives all five cross-fades. */
+    var tl;
     try {
-      // The enhanced class switches from the static, labelled stack to the
-      // pinned composition. It is removed again if timeline construction
-      // fails, leaving a useful page instead of a tall transparent spacer.
       if (journey) {
         journey.classList.remove('is-fallback');
         journey.classList.add('is-enhancing');
       }
-      animateProgress(0, true);
-      trigger = ScrollTrigger.create({
-        trigger: pin.parentElement,
-        start: 'top top',
-        end: 'bottom bottom',
-        invalidateOnRefresh: true,
-        onUpdate: function (self) { animateProgress(self.progress, false); },
-        onRefresh: function (self) { animateProgress(self.progress, true); }
+      tl = gsap.timeline({
+        scrollTrigger: {
+          trigger: pin.parentElement,
+          start: 'top top',
+          end: 'bottom bottom',
+          scrub: true,
+          onUpdate: function (self) {
+            var t = self.progress * tl.duration();
+            var i = Math.floor((t - 0.215) / STEP + 1);
+            if (i < 0) i = 0;
+            if (i > n - 1) i = n - 1;
+            setStage(i);
+          }
+        }
+      });
+      layers.forEach(function (layer, i) {
+        var start = i * STEP;
+        if (i === 0) {
+          tl.set(layer, { opacity: 1, scale: 1.05 }, 0);
+        } else {
+          tl.fromTo(layer,
+            { opacity: 0, scale: 1.12 },
+            { opacity: 1, scale: 1.03, ease: 'none', duration: 0.08 }, start - 0.03);
+        }
+        if (i < n - 1) {
+          tl.to(layer, { opacity: 0, scale: 1.0, ease: 'none', duration: 0.08 }, start + 0.16);
+        }
       });
       if (journey) {
         journey.classList.remove('is-enhancing');
-        journey.classList.add('is-enhanced');
+        journey.classList.add('is-enhanced'); // <-- CSS NOW SEES THIS AND APPLIES HEIGHT
       }
-      animateProgress(trigger.progress || 0, true);
     } catch (err) {
-      if (trigger && trigger.kill) trigger.kill();
+      if (tl && tl.kill) tl.kill();
+      layers.forEach(function (layer) {
+        layer.style.removeProperty('opacity');
+        layer.style.removeProperty('transform');
+      });
       useFallback();
       return;
     }
+    setStage(0);
 
-    // Mobile browser chrome and orientation changes alter the sticky
-    // viewport after the timeline is created. Refresh its trigger geometry
-    // once the new visual viewport has settled.
     var refreshTimer;
     function refreshJourney() {
-      mobileJourney = window.matchMedia('(max-width: 900px)').matches;
       clearTimeout(refreshTimer);
       refreshTimer = setTimeout(function () {
-        if (window.ScrollTrigger) window.ScrollTrigger.refresh(true);
+        if (window.ScrollTrigger) window.ScrollTrigger.refresh();
       }, 180);
     }
     window.addEventListener('resize', refreshJourney, { passive: true });
     window.addEventListener('orientationchange', refreshJourney, { passive: true });
-    window.addEventListener('pageshow', refreshJourney, { passive: true });
     if (window.visualViewport) window.visualViewport.addEventListener('resize', refreshJourney, { passive: true });
   }
 
