@@ -2728,6 +2728,17 @@ table { border-collapse: collapse; width: 100%; }
     width: 100%; 
     justify-content: center;
   }
+
+  /* Make the T-Link app card prominent on mobile */
+  .tlink-card {
+    flex-direction: column; /* Stack image on top of text */
+    align-items: flex-start;
+    gap: 16px;
+    padding: 24px 20px;
+  }
+  .tlink-card img {
+    width: 160px; /* Almost double the size of the desktop version */
+  }
 }
 
 /* ---------- 21. REDUCED MOTION ---------- */
@@ -3557,8 +3568,6 @@ table { border-collapse: collapse; width: 100%; }
   .quote-stage { min-height: 380px; }
   .footer-top { grid-template-columns: 1fr; }
   .footer-brand { grid-column: auto; }
-  .tlink-card { flex-direction: column; }
-  .tlink-card img { width: 72px; }
   .ops-2col { grid-template-columns: 1fr; }
   .mobile-card-table tr, .sched-table tr, .fleet-table tr { grid-template-columns: 1fr; }
   .mobile-card-table td, .sched-table td, .fleet-table td { border-bottom: 1px solid var(--line-light); }
