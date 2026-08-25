@@ -16,6 +16,9 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          # Do not leave the source repository's GITHUB_TOKEN as a global
+          # GitHub credential; the mirror push must use MIRROR_TOKEN below.
+          persist-credentials: false
 
       - name: Fast-forward tanto_net
         env:
