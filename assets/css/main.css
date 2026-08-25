@@ -3447,9 +3447,9 @@ table { border-collapse: collapse; width: 100%; }
   }
 
   .journey.is-enhancing .journey-tall,
-  .journey.is-enhanced .journey-tall { height: 360vh; height: 360svh; }
+  .journey.is-enhanced .journey-tall { height: 460vh; height: 460svh; }
   .journey.is-enhancing .journey-pin,
-  .journey.is-enhanced .journey-pin { height: 100svh; height: 100dvh; }
+  .journey.is-enhanced .journey-pin { height: 100svh; }
   .j-caption {
     left: var(--gutter);
     right: calc(var(--gutter) + 32px);
