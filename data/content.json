@@ -42,12 +42,12 @@
     }
   ],
   "customers": [
-    { "logo": "assets/img/cust-duhita.webp", "name": "Duhita Perkasa" },
-    { "logo": "assets/img/cust-teru.webp", "name": "Teru Tri Tunggal" },
-    { "logo": "assets/img/cust-sentosaprima.webp", "name": "Sentosaprima Abadi" },
-    { "logo": "assets/img/cust-kms.webp", "name": "Karya Mandiri Sejahtera" },
-    { "logo": "assets/img/cust-petik.webp", "name": "Petik" },
-    { "logo": "assets/img/cust-wings.webp", "name": "Wings" }
+    { "logo": "assets/img/customer-portrait-01.webp", "name": "Duhita Perkasa" },
+    { "logo": "assets/img/customer-portrait-02.webp", "name": "Teru Tri Tunggal" },
+    { "logo": "assets/img/customer-portrait-03.webp", "name": "Sentosaprima Abadi" },
+    { "logo": "assets/img/customer-portrait-04.webp", "name": "Karya Mandiri Sejahtera" },
+    { "logo": "assets/img/customer-portrait-05.webp?v=20260826-2", "name": "Daya Eka Samudra" },
+    { "logo": "assets/img/customer-portrait-06.webp", "name": "Wings" }
   ],
   "news": [
     {

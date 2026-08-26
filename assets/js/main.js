@@ -814,10 +814,13 @@
     // Customer logos render on any page that carries the strip
     var logos = $('#customerLogos');
     if (logos) {
+      // Rebuild from the current data so bfcache/hot reloads cannot retain
+      // customer images from an older content.js payload.
+      logos.textContent = '';
       (CONTENT.customers || []).forEach(function (c) {
-        // A legacy data entry pointed Daya Eka at a quotation-mark graphic.
-        // Keep that asset from resurfacing if an older content.js is cached.
-        if (!c || /cust-dayaeka\.webp$/i.test(String(c.logo || ''))) return;
+        // A legacy Petik asset is a quotation-mark graphic, not a portrait.
+        // Keep it out even when an older content.js is cached.
+        if (!c || /cust-petik\.webp(?:[?#].*)?$/i.test(String(c.logo || ''))) return;
         logos.appendChild(el('li', null, '<img src="' + esc(c.logo) + '" alt="' + esc(c.name) + '" loading="lazy" decoding="async">'));
       });
     }
