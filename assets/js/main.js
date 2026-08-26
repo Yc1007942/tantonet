@@ -815,6 +815,9 @@
     var logos = $('#customerLogos');
     if (logos) {
       (CONTENT.customers || []).forEach(function (c) {
+        // A legacy data entry pointed Daya Eka at a quotation-mark graphic.
+        // Keep that asset from resurfacing if an older content.js is cached.
+        if (!c || /cust-dayaeka\.webp$/i.test(String(c.logo || ''))) return;
         logos.appendChild(el('li', null, '<img src="' + esc(c.logo) + '" alt="' + esc(c.name) + '" loading="lazy" decoding="async">'));
       });
     }
@@ -826,7 +829,7 @@
     items.forEach(function (t, i) {
       var slide = el('blockquote', { class: 'quote-slide' + (i === 0 ? ' on' : '') });
       slide.innerHTML =
-        '<p>“' + esc(t.quote) + '”</p>' +
+        '<p>' + esc(t.quote) + '</p>' +
         (t.quoteEn ? '<p class="q-en">' + esc(t.quoteEn) + '</p>' : '') +
         '<div class="q-who"><span class="q-mark"></span><div><b>' + esc(t.person) + '</b><span>' + esc(t.position) + ' · ' + esc(t.company) + '</span></div></div>';
       stage.appendChild(slide);
