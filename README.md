@@ -37,7 +37,7 @@ The API verifies the request `Origin` and answers anything other than `https://w
 
 ## 2. New site architecture
 
-Static, dependency-free HTML/CSS/JS (no build step, no framework). GSAP + ScrollTrigger are vendored for the homepage cinematic scroll only.
+Source-first HTML/CSS/JS with a dependency-free runtime. Vercel runs the optional production build (`npm run build`) to create responsive, content-hashed media in `dist`; GSAP + ScrollTrigger remain vendored for the homepage cinematic scroll only.
 
 ```
 /
@@ -74,9 +74,8 @@ Static, dependency-free HTML/CSS/JS (no build step, no framework). GSAP + Scroll
 │   │                            Bersama / Jaya; logo-t.webp = red T mark for dark surfaces,
 │   │                            logo-flag.webp = blue flag for light surfaces; hero-poster.webp
 │   │                            = poster frame for the hero video)
-│   ├── video/hero.mp4          Homepage hero video (720p H.264, ~20 MB, faststart;
-│   │                           plays on desktop ≥901px only — mobile & reduced-motion keep
-│   │                           the poster image)
+│   ├── video/hero.mp4          Homepage hero source master (build input; Vercel emits
+│   │                           mobile/desktop WebM + fast-start H.264 variants)
 │   ├── map/indonesia-land.svg  Indonesia land geometry (1920×764, equirect 94–142°E)
 │   └── vendor/                 gsap.min.js, ScrollTrigger.min.js
 ├── data/
@@ -85,7 +84,10 @@ Static, dependency-free HTML/CSS/JS (no build step, no framework). GSAP + Scroll
 │   ├── fleet.json/.js          12 vessel classes (DWT/GRT/TEU/speed/reefer), 4 categories
 │   └── offices.json/.js        32 offices (address, phones, email, lat/lng, region)
 ├── dev-server.mjs              Static server + /api/tcm/* proxy (port 4173);
-│                               supports HTTP Range (206) for video seeking
+│                               supports HTTP Range (206) for video seeking and SITE_ROOT=dist
+├── scripts/build.mjs           Vercel media generation, reference rewrite and minification
+├── scripts/check.mjs           Dependency-free JSON/JS/HTML/CSS/reference integrity check
+├── package.json                Build/preview/check commands and build-only tooling
 ├── sitemap.xml · robots.txt · vercel.json
 └── .vercelignore                Keeps local source/docs out of the deployment
 ```
@@ -106,19 +108,24 @@ Static, dependency-free HTML/CSS/JS (no build step, no framework). GSAP + Scroll
 ## 3. Development
 
 ```bash
-node dev-server.mjs        # → http://localhost:4173
+node dev-server.mjs        # → http://localhost:4173 (source tree)
+npm run check              # static integrity checks
+npm run build              # production dist (requires npm install)
+npm run preview            # serve the optimized dist locally
 ```
 
 - Serves the static site and proxies `POST /api/tcm/*` to the production API with the accepted Origin, so **live tracking and schedule search work in local development** exactly as they will in production.
 - Unknown paths serve `404.html` with status 404.
-- No dependencies; Node ≥ 18 (uses global `fetch`).
+- The source dev server has no runtime dependencies; Node ≥ 18 (uses global `fetch`). Build-only dependencies are installed by `npm install` when producing `dist`.
 
 ### Production deployment
 
-1. Import the repository into Vercel with no build command; this is a static site.
+1. Import the repository into Vercel; `vercel.json` runs `npm run build` and publishes `dist`.
 2. Set the production domain to `www.tantonet.com`; `vercel.json` contains the old-URL 301 redirects. Preview domains such as `*.vercel.app` use the included `/api/tcm/*` proxy for live API calls.
 3. Keep `/dashboard/` on its existing application or add a Vercel rewrite to that origin.
-4. No build step, environment variables or API keys are required — the API client auto-detects origin.
+4. No API keys are required — the API client auto-detects origin. Vercel installs the build-only Sharp, FFmpeg and esbuild dependencies during deployment.
+
+The repository-level `api/tcm/[...path].js` function is kept outside `dist`, so Vercel still exposes the live tracking and schedule proxy after the static build.
 
 ---
 
@@ -144,7 +151,7 @@ Verification screenshots and source JSON are kept out of the Vercel upload by `.
 
 - Semantic landmarks, one `h1` per page, skip link, ARIA on tabs/carousels/dialogs, `aria-live` on live results, focus-visible states, keyboard support for the map route search, fleet tabs, container viewer and office filters.
 - `prefers-reduced-motion`: story mode, journey scroll, parallax, count-ups and route animation all fall back to static states.
-- Self-hosted fonts (no third-party requests), WebP imagery, `loading="lazy"` below the fold, `fetchpriority="high"` hero, no runtime dependencies beyond vendored GSAP on the homepage.
+- Self-hosted fonts (no third-party requests), responsive WebP/AVIF build imagery, `loading="lazy"` below the fold, `fetchpriority="high"` poster, deferred hero video variants, and no runtime dependencies beyond vendored GSAP on the homepage. Reduced-motion, Save-Data, 2G, codec and autoplay fallbacks keep the poster/static journey visible.
 
 ---
 

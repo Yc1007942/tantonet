@@ -104,6 +104,9 @@
   /* Motion */
   --ease: cubic-bezier(.22, 1, .36, 1);
   --dur: .7s;
+  --motion-fast: 180ms;
+  --motion-base: 480ms;
+  --motion-slow: 900ms;
 
   /* Radius — restrained */
   --r-sm: 2px;
@@ -131,6 +134,7 @@ body {
   text-rendering: optimizeLegibility;
   font-feature-settings: "ss01";
 }
+html, body { overflow-x: clip; }
 /* A restrained curtain makes internal navigation feel intentional while
    leaving same-page anchors and external destinations untouched. */
 body::before {
@@ -512,6 +516,15 @@ table { border-collapse: collapse; width: 100%; }
   transition: clip-path .5s var(--ease), visibility .5s;
 }
 .mobile-menu.open { clip-path: inset(0 0 0 0); visibility: visible; }
+.mobile-menu.open li { animation: menu-entry .5s var(--ease) both; }
+.mobile-menu.open li:nth-child(2) { animation-delay: 35ms; }
+.mobile-menu.open li:nth-child(3) { animation-delay: 70ms; }
+.mobile-menu.open li:nth-child(4) { animation-delay: 105ms; }
+.mobile-menu.open li:nth-child(5) { animation-delay: 140ms; }
+.mobile-menu.open li:nth-child(6) { animation-delay: 175ms; }
+.mobile-menu.open li:nth-child(7) { animation-delay: 210ms; }
+.mobile-menu.open li:nth-child(8) { animation-delay: 245ms; }
+@keyframes menu-entry { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
 .mobile-menu ol { counter-reset: mm; }
 .mobile-menu li { border-bottom: 1px solid var(--line-dark); }
 .mobile-menu li a {
@@ -576,7 +589,12 @@ table { border-collapse: collapse; width: 100%; }
   object-fit: cover;
   object-position: center 42%;
   display: block;
+  opacity: 0;
+  transition: opacity 900ms var(--ease);
 }
+.hero-media.video-ready .hero-video { opacity: 1; }
+.hero-media.video-fallback .hero-video { display: none; }
+.hero-media.video-autoplay-blocked .hero-video { opacity: 0; }
 .hero-media::after {
   content: "";
   position: absolute; inset: 0;
@@ -2678,6 +2696,83 @@ table { border-collapse: collapse; width: 100%; }
   transform: scale(.965);
 }
 .reveal-scale.in { opacity: 1; transform: none; }
+
+/* ---------- 19.5 SHARED MOTION POLISH ----------
+   Effects are composited properties only. The reveal controller keeps every
+   node visible until its observer is ready, so a script or observer failure
+   cannot turn content into an invisible page. */
+.reveal[data-motion="mask"] {
+  transition-property: opacity, transform, clip-path;
+}
+.reveal-scale[data-motion="media"] {
+  transition-property: opacity, transform;
+}
+.reveal-ready .reveal[data-motion="mask"] { clip-path: inset(0 0 100% 0 round 2px); }
+.reveal-ready .reveal[data-motion="mask"].in { clip-path: inset(0 round 2px); }
+.reveal-ready .reveal[data-motion="mask"]:nth-child(2) { transition-delay: 70ms; }
+.reveal-ready .reveal[data-motion="mask"]:nth-child(3) { transition-delay: 120ms; }
+.reveal-ready .reveal[data-motion="mask"]:nth-child(4) { transition-delay: 170ms; }
+.reveal-ready .reveal[data-motion="mask"]:nth-child(5) { transition-delay: 220ms; }
+
+.scroll-progress {
+  position: fixed;
+  z-index: 180;
+  inset: 0 auto auto 0;
+  width: 100%;
+  height: 2px;
+  pointer-events: none;
+  transform: scaleX(0);
+  transform-origin: left center;
+  background: linear-gradient(90deg, var(--t-azure), var(--t-azure-soft));
+  box-shadow: 0 0 10px rgba(11,163,255,.5);
+  transition: opacity var(--motion-fast) var(--ease);
+}
+
+.page-hero .overline,
+.page-hero h1,
+.page-hero .lede,
+.page-hero .ph-meta,
+.page-cta,
+.timeline li,
+.office-card,
+.news-item,
+.fleet-cat,
+.img-seq figure,
+.customers li,
+.steps .step,
+.svc-item,
+.cert-row {
+  will-change: auto;
+}
+
+.command-panel:focus-within {
+  border-color: rgba(98,197,255,.45);
+  box-shadow: 0 30px 80px rgba(3,8,16,.6), 0 0 0 3px rgba(11,163,255,.08);
+}
+.field input:focus, .field select:focus {
+  box-shadow: 0 0 0 3px rgba(11,163,255,.13);
+}
+.btn { transition: transform var(--motion-fast) var(--ease), box-shadow var(--motion-fast) var(--ease), background-color var(--motion-fast) var(--ease), color var(--motion-fast) var(--ease); }
+.btn:active { transform: translateY(1px) scale(.985); }
+
+@media (hover: hover) and (pointer: fine) {
+  .office-card, .news-item, .fleet-cat, .img-seq figure, .steps .step, .svc-item, .tlink-card {
+    transition: transform var(--motion-base) var(--ease), box-shadow var(--motion-base) var(--ease), border-color var(--motion-base) var(--ease), background-color var(--motion-base) var(--ease);
+  }
+  .office-card:hover, .news-item:hover, .img-seq figure:hover, .steps .step:hover, .svc-item:hover, .tlink-card:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-1);
+  }
+  .fleet-cat:hover { transform: translateY(-2px); }
+  .page-hero::before { transition: transform 1.2s var(--ease), opacity 1.2s var(--ease); }
+  .page-hero:hover::before { transform: scale(1.03); opacity: .72; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scroll-progress { display: none; }
+  .reveal[data-motion="mask"], .reveal-ready .reveal[data-motion="mask"] { clip-path: none; }
+  .btn:active { transform: none; }
+}
 
 /* ---------- 20. RESPONSIVE ---------- */
 @media (max-width: 1180px) {

@@ -640,8 +640,12 @@
     exitQueued = true;
     requestAnimationFrame(function () { exitQueued = false; updateExit(); });
   }
-  window.addEventListener('scroll', queueExit, { passive: true });
-  window.addEventListener('resize', queueExit, { passive: true });
+  if (window.TANTO_MOTION && window.TANTO_MOTION.subscribe) {
+    window.TANTO_MOTION.subscribe(function () { updateExit(); });
+  } else {
+    window.addEventListener('scroll', queueExit, { passive: true });
+    window.addEventListener('resize', queueExit, { passive: true });
+  }
 
   /* ---------- network reveal ----------
      No narrative intro: the first time the section enters the viewport,
@@ -764,12 +768,14 @@
   }
 
   // keep tooltip position sane on scroll/resize
-  window.addEventListener('scroll', function () {
+  function refreshTooltip() {
     if (tip && tip.classList.contains('show') && lockedPort) {
       var p = byId[lockedPort];
       if (p) showTip(p);
     }
-  }, { passive: true });
+  }
+  if (window.TANTO_MOTION && window.TANTO_MOTION.subscribe) window.TANTO_MOTION.subscribe(refreshTooltip);
+  else window.addEventListener('scroll', refreshTooltip, { passive: true });
   var rt;
   window.addEventListener('resize', function () {
     clearTimeout(rt);

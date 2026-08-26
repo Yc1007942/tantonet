@@ -36,6 +36,63 @@
     });
   }
 
+  /* ---------------- Shared motion scheduler ----------------
+     Scroll effects subscribe to one passive listener and one rAF. Keeping
+     layout reads/writes in this queue prevents several independent effects
+     from competing during touch momentum or a fast wheel gesture. */
+  var motionSubscribers = [];
+  var motionFrame = 0;
+  var motionReady = false;
+  var motionScrollY = 0;
+
+  function subscribeMotion(fn) {
+    if (typeof fn !== 'function') return function () {};
+    motionSubscribers.push(fn);
+    if (motionReady) scheduleMotionFrame();
+    return function () {
+      var i = motionSubscribers.indexOf(fn);
+      if (i > -1) motionSubscribers.splice(i, 1);
+    };
+  }
+
+  function scheduleMotionFrame() {
+    if (motionFrame) return;
+    motionFrame = window.requestAnimationFrame(function () {
+      motionFrame = 0;
+      motionScrollY = window.pageYOffset || document.documentElement.scrollTop || 0;
+      if (document.hidden) return;
+      motionSubscribers.slice().forEach(function (fn) {
+        try { fn(motionScrollY); } catch (_) { /* isolate one effect */ }
+      });
+    });
+  }
+
+  function initMotionScheduler() {
+    if (motionReady) return;
+    motionReady = true;
+    // Small presentation modules (the network map) can join the same queue
+    // without importing a second animation runtime.
+    window.TANTO_MOTION = window.TANTO_MOTION || {};
+    window.TANTO_MOTION.subscribe = subscribeMotion;
+    window.TANTO_MOTION.request = scheduleMotionFrame;
+    window.addEventListener('scroll', scheduleMotionFrame, { passive: true });
+    window.addEventListener('resize', scheduleMotionFrame, { passive: true });
+    document.addEventListener('visibilitychange', function () {
+      if (!document.hidden) scheduleMotionFrame();
+    }, { passive: true });
+    scheduleMotionFrame();
+  }
+
+  function initScrollProgress() {
+    var progress = el('div', { class: 'scroll-progress', id: 'scrollProgress', 'aria-hidden': 'true' });
+    document.body.appendChild(progress);
+    subscribeMotion(function (scrollY) {
+      var root = document.documentElement;
+      var max = Math.max(1, root.scrollHeight - window.innerHeight);
+      progress.style.transform = 'scaleX(' + Math.max(0, Math.min(1, scrollY / max)).toFixed(4) + ')';
+    });
+  }
+
   /* ---------------- Navigation ---------------- */
   function initNav() {
     var nav = $('#siteNav');
@@ -43,11 +100,11 @@
     var menu = $('#mobileMenu');
     if (!nav) return;
 
-    var onScroll = function () {
-      nav.classList.toggle('is-solid', window.scrollY > 40);
+    var onScroll = function (scrollY) {
+      nav.classList.toggle('is-solid', scrollY > 40);
     };
-    onScroll();
-    window.addEventListener('scroll', onScroll, { passive: true });
+    onScroll(window.pageYOffset || document.documentElement.scrollTop || 0);
+    subscribeMotion(onScroll);
 
     // Mega menus (hover + focus + keyboard)
     $all('.nav-drop', nav).forEach(function (drop) {
@@ -280,10 +337,19 @@
      ones injected after boot (scale stat rows, news items, …). A
      MutationObserver picks up late additions so nothing stays hidden. */
   var revealIO = null;
+  var revealListeners = [];
+  function onReveal(fn) {
+    if (typeof fn === 'function') revealListeners.push(fn);
+  }
+  function notifyReveal(node) {
+    revealListeners.slice().forEach(function (fn) {
+      try { fn(node); } catch (_) { /* isolate one generated effect */ }
+    });
+  }
   function observeReveals(nodes) {
     if (!nodes.length) return;
     if (reducedMotion || !('IntersectionObserver' in window)) {
-      nodes.forEach(function (n) { n.classList.add('in'); });
+      nodes.forEach(function (n) { n.classList.add('in'); notifyReveal(n); });
       return;
     }
     if (!revealIO) {
@@ -291,6 +357,7 @@
         entries.forEach(function (en) {
           if (en.isIntersecting) {
             en.target.classList.add('in');
+            notifyReveal(en.target);
             revealIO.unobserve(en.target);
           }
         });
@@ -299,19 +366,38 @@
     nodes.forEach(function (n) { if (!n.classList.contains('in')) revealIO.observe(n); });
   }
   function initReveals() {
+    var polishSelector = '.page-hero .overline, .page-hero h1, .page-hero .lede, .page-hero .ph-meta, .page-cta, .timeline li, .img-seq figure, .customers li, .steps .step, .svc-item, .cert-row';
+    $all(polishSelector).forEach(function (node) {
+      if (!node.classList.contains('reveal')) node.classList.add('reveal');
+    });
     var initialNodes = $all('.reveal, .reveal-scale');
+    initialNodes.forEach(function (node) {
+      if (!node.hasAttribute('data-motion')) node.setAttribute('data-motion', node.classList.contains('reveal-scale') ? 'media' : 'mask');
+    });
     observeReveals(initialNodes);
     // CSS keeps reveal content visible until this capability is confirmed.
     // A failed boot therefore cannot leave entire sections transparent.
     document.documentElement.classList.add('reveal-ready');
+    // Last-resort safety net for blocked observers or a page that is restored
+    // from cache while its observer is still being reconstructed.
+    window.setTimeout(function () {
+      $all('.reveal, .reveal-scale').forEach(function (node) { node.classList.add('in'); });
+    }, 4200);
     if ('MutationObserver' in window) {
       var mo = new MutationObserver(function (muts) {
         muts.forEach(function (m) {
           m.addedNodes.forEach(function (n) {
             if (!n || n.nodeType !== 1) return;
+            if (n.matches && n.matches(polishSelector) && !n.classList.contains('reveal')) n.classList.add('reveal');
+            if (n.querySelectorAll) Array.prototype.slice.call(n.querySelectorAll(polishSelector)).forEach(function (node) {
+              if (!node.classList.contains('reveal')) node.classList.add('reveal');
+            });
             var found = [];
             if (n.matches && n.matches('.reveal, .reveal-scale')) found.push(n);
             if (n.querySelectorAll) found = found.concat(Array.prototype.slice.call(n.querySelectorAll('.reveal, .reveal-scale')));
+            found.forEach(function (node) {
+              if (!node.hasAttribute('data-motion')) node.setAttribute('data-motion', node.classList.contains('reveal-scale') ? 'media' : 'mask');
+            });
             observeReveals(found);
           });
         });
@@ -343,7 +429,7 @@
   }
 
   function initStats() {
-    var observer = null;
+    var pending = [];
 
     function statDetailMarkup(detail) {
       var safe = esc(detail);
@@ -364,16 +450,19 @@
         node.querySelectorAll('.stat-count').forEach(play);
         return;
       }
-      observer.observe(node);
+      if (!node.classList.contains('reveal')) node.classList.add('reveal');
+      if (!node.hasAttribute('data-motion')) node.setAttribute('data-motion', 'mask');
+      if (node.classList.contains('in')) node.querySelectorAll('.stat-count').forEach(play);
+      else pending.push(node);
+      observeReveals([node]);
     }
 
-    observer = ('IntersectionObserver' in window) ? new IntersectionObserver(function (entries) {
-      entries.forEach(function (en) {
-        if (!en.isIntersecting) return;
-        observer.unobserve(en.target);
-        en.target.querySelectorAll('.stat-count').forEach(play);
-      });
-    }, { threshold: 0.3 }) : null;
+    onReveal(function (node) {
+      var index = pending.indexOf(node);
+      if (index === -1) return;
+      pending.splice(index, 1);
+      node.querySelectorAll('.stat-count').forEach(play);
+    });
 
     function prepareMetric(node) {
       if (!node || node.getAttribute('data-count-ready') === 'true') return;
@@ -489,6 +578,20 @@
       $all('img', media).forEach(function (img) {
         img.classList.toggle('on', img.getAttribute('data-cat') === id);
       });
+      var activeImg = $('img[data-cat="' + id + '"]', media);
+      if (activeImg) {
+        activeImg.loading = 'eager';
+        activeImg.setAttribute('fetchpriority', 'high');
+        if (activeImg.decode) activeImg.decode().catch(function () {});
+      }
+      var catIndex = categories.map(function (item) { return item.id; }).indexOf(id);
+      var nextCat = categories[(catIndex + 1) % Math.max(1, categories.length)];
+      var nextImg = nextCat && $('img[data-cat="' + nextCat.id + '"]', media);
+      if (nextImg && nextImg !== activeImg) {
+        nextImg.loading = 'lazy';
+        nextImg.setAttribute('fetchpriority', 'low');
+        if (nextImg.decode) nextImg.decode().catch(function () {});
+      }
       if (tag) tag.textContent = FLEET_PHOTO[id] || '';
       var rows = cat.classes.map(classRow).filter(Boolean);
       var min = Math.min.apply(null, rows.map(function (r) { return r.teu; }));
@@ -669,7 +772,7 @@
             return;
           }
           var trs = rows.slice(0, 12).map(function (j) {
-            return '<tr><td data-label="Vessel">' + esc(j.vessel || j.name_kapal || '—') + '</td>' +
+            return '<tr class="reveal"><td data-label="Vessel">' + esc(j.vessel || j.name_kapal || '—') + '</td>' +
               '<td data-label="Route">' + esc(j.route || (p.name + ' → ' + d.name)) + '</td>' +
               '<td data-label="Closing">' + esc(j.closing || j.tgl_closing || '—') + '</td>' +
               '<td data-label="ETD">' + esc(j.etd || '—') + '</td>' +
@@ -759,7 +862,7 @@
       tbody.innerHTML = rows.map(function (row) {
         var etd = row.live && row.live.etd ? row.live.etd : '—';
         var eta = row.live && row.live.eta ? row.live.eta : '—';
-        return '<tr><td data-label="Route">' + esc(row.route) + '</td><td data-label="ETD">' + esc(etd) + '</td><td data-label="ETA">' + esc(eta) + '</td>' +
+        return '<tr class="reveal"><td data-label="Route">' + esc(row.route) + '</td><td data-label="ETD">' + esc(etd) + '</td><td data-label="ETA">' + esc(eta) + '</td>' +
           '<td data-label="Status"><span class="status-chip ' + (row.live ? 'on-time' : 'loading') + '">' + (row.live ? 'scheduled' : 'frequency') + ' · ' + esc(row.freq) + '</span></td></tr>';
       }).join('');
     }
@@ -901,6 +1004,7 @@
       step: $('#jcStep'), title: $('#jcTitle'), text: $('#jcText')
     };
     var dots = $all('.jp-dot');
+    var layerImages = layers.map(function (layer) { return $('img', layer); });
     var currentStage = -1;
     var STAGES = [
       { step: '01 / Container', title: 'It Starts With A Container.', text: 'More than 60,000 ISO containers of every size — the average one under five years old.' },
@@ -910,7 +1014,18 @@
       { step: '05 / Archipelago', title: 'From West to East.', text: '39 ports across the Indonesian archipelago. One network, one standard.' }
     ];
 
+    function warmImage(i, priority) {
+      var image = layerImages[i];
+      if (!image || image.getAttribute('data-warmed') === 'true') return;
+      image.setAttribute('data-warmed', 'true');
+      image.loading = priority ? 'eager' : 'lazy';
+      image.setAttribute('fetchpriority', priority ? 'high' : 'low');
+      if (image.decode) image.decode().catch(function () {});
+    }
+
     function setStage(i) {
+      warmImage(i, i === 0);
+      warmImage(Math.min(layers.length - 1, i + 1), false);
       if (!caption.step || i === currentStage) return;
       currentStage = i;
       var s = STAGES[i];
@@ -930,6 +1045,8 @@
         layer.style.removeProperty('transform');
         layer.style.removeProperty('will-change');
       });
+      warmImage(0, true);
+      warmImage(1, false);
       setStage(0);
     }
 
@@ -964,6 +1081,13 @@
       var position = progress * (n - 1);
       var index = Math.min(n - 1, Math.floor(position));
       var blend = index >= n - 1 ? 0 : position - index;
+      warmImage(index, index === 0);
+      warmImage(Math.min(n - 1, index + 1), false);
+      // Never fade the current frame away while its successor is still
+      // decoding. This is the key guard against a black flash on slow mobile
+      // connections or after a fast reverse scroll.
+      var nextImage = layerImages[index + 1];
+      if (blend > 0 && nextImage && !(nextImage.complete && nextImage.naturalWidth > 0)) blend = 0;
 
       layers.forEach(function (layer, i) {
         var opacity = 0;
@@ -1014,6 +1138,13 @@
         frame = window.requestAnimationFrame(animateFrame);
       }
     }
+    layerImages.forEach(function (image) {
+      if (!image) return;
+      image.addEventListener('load', function () {
+        if (journey && !journey.classList.contains('is-enhanced')) return;
+        if (!frame) frame = window.requestAnimationFrame(animateFrame);
+      }, { passive: true });
+    });
 
     try {
       if (journey) {
@@ -1069,15 +1200,34 @@
     if (!video) return;
     var media = video.parentElement;
 
+    var sourceLoaded = false;
+
     function fallback() {
       if (media) media.classList.add('video-fallback');
       video.style.display = 'none';
     }
 
+    var connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+    var constrained = reducedMotion || (connection && (connection.saveData || /(^|-)2g$/.test(connection.effectiveType || '')));
+    if (constrained) {
+      fallback();
+      return;
+    }
+
+    function loadSources() {
+      if (sourceLoaded) return;
+      sourceLoaded = true;
+      $all('source[data-src]', video).forEach(function (source) {
+        source.src = source.getAttribute('data-src');
+        source.removeAttribute('data-src');
+      });
+      video.load();
+    }
+
     video.addEventListener('error', fallback, { once: true });
     video.addEventListener('loadedmetadata', function () {
       if (media) media.classList.add('video-ready');
-    }, { once: true });
+    });
 
     // Autoplay can be denied by a browser policy. Keep the poster visible in
     // that case, and retry after bfcache/visibility restores without throwing.
@@ -1088,10 +1238,12 @@
         if (media) media.classList.add('video-autoplay-blocked');
       });
     }
-    video.addEventListener('loadeddata', tryPlay, { once: true });
+    video.addEventListener('loadeddata', tryPlay);
     document.addEventListener('visibilitychange', tryPlay, { passive: true });
     window.addEventListener('pageshow', tryPlay, { passive: true });
-    tryPlay();
+    var start = function () { loadSources(); tryPlay(); };
+    if (window.requestIdleCallback) window.requestIdleCallback(start, { timeout: 700 });
+    else window.setTimeout(start, 180);
   }
 
   /* ---------------- Hero parallax (subtle) ---------------- */
@@ -1100,18 +1252,13 @@
     var hero = $('.hero');
     if (!hero) return;
     var img = $('.hero-media img', hero);
-    var ticking = false;
-    function update() {
-      ticking = false;
-      var y = window.scrollY;
+    function update(y) {
       var h = hero.offsetHeight || 1;
       if (y < h * 1.2) {
         img.style.transform = 'translateY(' + (y * 0.12).toFixed(1) + 'px) scale(' + Math.max(1, 1.07 - y * 0.00002).toFixed(4) + ')';
       }
     }
-    window.addEventListener('scroll', function () {
-      if (!ticking) { ticking = true; requestAnimationFrame(update); }
-    }, { passive: true });
+    subscribeMotion(update);
   }
 
   /* ---------------- ISO 6346 Container Formatter ---------------- */
@@ -1156,6 +1303,8 @@
 
   /* ---------------- Boot ---------------- */
   function boot() {
+    initMotionScheduler();
+    initScrollProgress();
     initNav();
     initPageTransitions();
     initChapterRail();

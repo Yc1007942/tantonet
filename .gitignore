@@ -1,5 +1,8 @@
 # Local deployment metadata
 .vercel/
+/dist/
+.tanto-media-cache/
+node_modules/
 
 # Generated/local artifacts
 *.log

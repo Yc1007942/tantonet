@@ -1,0 +1,18 @@
+{
+  "name": "tanto-static",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "preview": "SITE_ROOT=dist node dev-server.mjs",
+    "check": "node scripts/check.mjs"
+  },
+  "devDependencies": {
+    "esbuild": "0.24.2",
+    "ffmpeg-static": "5.2.0",
+    "sharp": "0.33.5"
+  }
+}

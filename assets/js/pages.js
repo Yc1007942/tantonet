@@ -60,7 +60,7 @@
           ? 'Via ' + portName(r.via)
           : 'Direct';
         body.insertAdjacentHTML('beforeend',
-          '<tr><td data-label="From">' + esc(portName(r.from)) + '</td>' +
+          '<tr class="reveal"><td data-label="From">' + esc(portName(r.from)) + '</td>' +
           '<td data-label="To">' + esc(portName(r.to)) + '</td>' +
           '<td data-label="Frequency / month" class="rt-freq">' + esc(r.freq) + '</td>' +
           '<td data-label="Routing" class="' + (r.via ? 'rt-via' : 'rt-direct') + '">' + esc(routing) + '</td></tr>');
@@ -90,7 +90,7 @@
       var rows = routes.filter(function (r) { return r.region === region; });
       if (!rows.length) return;
       var trs = rows.map(function (r) {
-        return '<tr>' +
+        return '<tr class="reveal">' +
           '<td data-label="From">' + esc(portName(r.from)) + '</td>' +
           '<td data-label="To">' + esc(portName(r.to)) + '</td>' +
           '<td data-label="Frequency / month">' + esc(r.freq) + '</td>' +
@@ -286,7 +286,7 @@
         b.setAttribute('aria-selected', String(on));
       });
       body.innerHTML = EQ_DATA[size].map(function (row) {
-        return '<tr><td data-label="Specification">' + esc(row[0]) + '</td><td data-label="Value" class="eq-val">' + esc(row[1]) + '</td></tr>';
+        return '<tr class="reveal"><td data-label="Specification">' + esc(row[0]) + '</td><td data-label="Value" class="eq-val">' + esc(row[1]) + '</td></tr>';
       }).join('');
       var cap = $('#eqCap');
       if (cap) cap.textContent = size + ' standard ISO container — ' + (size === '20' ? '20 foot' : '40 foot');

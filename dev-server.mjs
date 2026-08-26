@@ -12,10 +12,11 @@
 import { createServer } from 'node:http';
 import { createReadStream } from 'node:fs';
 import { readFile, stat } from 'node:fs/promises';
-import { extname, join, normalize } from 'node:path';
+import { extname, join, normalize, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = fileURLToPath(new URL('.', import.meta.url));
+const SITE_ROOT = process.env.SITE_ROOT ? resolve(ROOT, process.env.SITE_ROOT) : ROOT;
 const PORT = process.env.PORT ? Number(process.env.PORT) : 4173;
 const API_BASE = 'https://sync.tantooffice.com/api/tcm/';
 
@@ -30,6 +31,8 @@ const MIME = {
   '.jpg': 'image/jpeg',
   '.woff2': 'font/woff2',
   '.mp4': 'video/mp4',
+  '.webm': 'video/webm',
+  '.avif': 'image/avif',
   '.ico': 'image/x-icon',
   '.txt': 'text/plain; charset=utf-8',
   '.xml': 'application/xml; charset=utf-8'
@@ -38,8 +41,8 @@ const MIME = {
 function safePath(urlPath) {
   let p = decodeURIComponent(urlPath.split('?')[0]);
   if (p === '/') p = '/index.html';
-  const full = normalize(join(ROOT, p));
-  if (!full.startsWith(ROOT)) return null;
+  const full = normalize(join(SITE_ROOT, p));
+  if (full !== SITE_ROOT && !full.startsWith(SITE_ROOT + '/')) return null;
   return full;
 }
 
@@ -156,6 +159,6 @@ process.on('uncaughtException', (e) => {
 });
 
 server.listen(PORT, () => {
-  console.log(`Tanto dev server → http://localhost:${PORT}`);
+  console.log(`Tanto dev server → http://localhost:${PORT}${process.env.SITE_ROOT ? ` (${process.env.SITE_ROOT})` : ''}`);
   console.log(`API proxy       → /api/tcm/* → ${API_BASE}(origin: www.tantonet.com)`);
 });

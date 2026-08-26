@@ -172,8 +172,8 @@
     <section class="hero" id="ocean" aria-label="Tanto Intim Line">
       <div class="hero-media" aria-hidden="true">
         <img src="assets/img/hero-poster.webp" alt="" fetchpriority="high" decoding="async">
-        <video class="hero-video" autoplay muted loop playsinline preload="auto" poster="assets/img/hero-poster.webp">
-          <source src="assets/video/hero.mp4" type="video/mp4">
+        <video class="hero-video" autoplay muted loop playsinline preload="none" poster="assets/img/hero-poster.webp" data-video="hero">
+          <source data-src="assets/video/hero.mp4" type="video/mp4">
         </video>
       </div>
       <div class="hero-lens" aria-hidden="true">
@@ -422,27 +422,27 @@
       <div class="journey-tall">
         <div class="journey-pin" id="journeyPin">
           <div class="j-layer" data-stage="0">
-            <img src="assets/img/journey-container.webp" alt="" aria-hidden="true" decoding="async" style="object-fit:contain;padding:6vh 8vw;background:linear-gradient(180deg,#0a1424,#0d1a2e)">
+            <img src="assets/img/journey-container.webp" alt="" aria-hidden="true" loading="eager" fetchpriority="high" decoding="async" style="object-fit:contain;padding:6vh 8vw;background:linear-gradient(180deg,#0a1424,#0d1a2e)">
             <div class="j-veil" style="background:linear-gradient(180deg,rgba(6,13,24,.35),rgba(6,13,24,.1) 45%,rgba(6,13,24,.65))"></div>
             <div class="j-static-caption"><span class="jsc-step">01 / Container</span><h3>It Starts With A Container.</h3><p>More than 60,000 ISO containers of every size — the average one under five years old.</p></div>
           </div>
           <div class="j-layer" data-stage="1">
-            <img src="assets/img/tanto-port.jpg" alt="Aerial view of a container port — a loaded vessel at the quay among yard cranes and stacked containers" decoding="async">
+            <img src="assets/img/tanto-port.jpg" alt="Aerial view of a container port — a loaded vessel at the quay among yard cranes and stacked containers" loading="lazy" decoding="async">
             <div class="j-veil"></div>
             <div class="j-static-caption"><span class="jsc-step">02 / Port</span><h3>The Port Is Where It Moves.</h3><p>Fully-owned handling equipment at every port on the network — reach stackers and forklifts, with operators certified and recertified every year.</p></div>
           </div>
           <div class="j-layer" data-stage="2">
-            <img src="assets/img/journey-crane.webp" alt="A Tanto container vessel alongside the quay under a ship-to-shore crane, containers stacked at the berth" decoding="async">
+            <img src="assets/img/journey-crane.webp" alt="A Tanto container vessel alongside the quay under a ship-to-shore crane, containers stacked at the berth" loading="lazy" decoding="async">
             <div class="j-veil"></div>
             <div class="j-static-caption"><span class="jsc-step">03 / Crane</span><h3>Loaded, Stowed, Secured.</h3><p>Geared vessels load and discharge at the berth — no waiting on third-party equipment.</p></div>
           </div>
           <div class="j-layer" data-stage="3">
-            <img src="assets/img/journey-vessel.webp" alt="A Tanto geared container vessel with yellow cranes sailing across calm Indonesian waters" decoding="async">
+            <img src="assets/img/journey-vessel.webp" alt="A Tanto geared container vessel with yellow cranes sailing across calm Indonesian waters" loading="lazy" decoding="async">
             <div class="j-veil"></div>
             <div class="j-static-caption"><span class="jsc-step">04 / Vessel</span><h3>A Fleet Built for These Waters.</h3><p>From shallow-draft river boats to 1,500 TEU mainliners — 60+ vessels, 70,000+ TEU.</p></div>
           </div>
           <div class="j-layer" data-stage="4">
-            <img src="assets/img/bg-profile.webp" alt="" aria-hidden="true" decoding="async" style="object-fit:cover">
+            <img src="assets/img/bg-profile.webp" alt="" aria-hidden="true" loading="lazy" decoding="async" style="object-fit:cover">
             <div class="j-veil" style="background:rgba(8,18,32,.55)"></div>
             <div class="j-static-caption"><span class="jsc-step">05 / Archipelago</span><h3>From West to East.</h3><p>39 ports across the Indonesian archipelago. One network, one standard.</p></div>
           </div>
@@ -488,9 +488,9 @@
         <div class="fleet-view">
           <div class="fleet-media" id="fleetMedia">
             <img data-cat="feeder" src="assets/img/vessel-gembira.webp" alt="Lumoso Gembira, a feeder container vessel of the Tanto network, berthed at a port terminal among the cranes" class="on" decoding="async">
-            <img data-cat="shallow" src="assets/img/vessel-citra.webp" alt="Tanto Citra, a shallow draft container vessel under way loaded with blue containers" decoding="async">
-            <img data-cat="heavylift" src="assets/img/vessel-bersinar.webp" alt="Tanto Bersinar, a geared container vessel, at sunset" decoding="async">
-            <img data-cat="mainline" src="assets/img/vessel-bersama.webp" alt="Tanto Bersama, a mainline container vessel, at port" decoding="async">
+            <img data-cat="shallow" src="assets/img/vessel-citra.webp" alt="Tanto Citra, a shallow draft container vessel under way loaded with blue containers" loading="lazy" decoding="async">
+            <img data-cat="heavylift" src="assets/img/vessel-bersinar.webp" alt="Tanto Bersinar, a geared container vessel, at sunset" loading="lazy" decoding="async">
+            <img data-cat="mainline" src="assets/img/vessel-bersama.webp" alt="Tanto Bersama, a mainline container vessel, at port" loading="lazy" decoding="async">
             <span class="fm-tag" id="fleetTag">LUMOSO GEMBIRA</span>
           </div>
           <div class="fleet-specs" id="fleetSpecs" aria-live="polite"><!-- injected --></div>
@@ -783,8 +783,8 @@
   <script src="data/fleet.js"></script>
 
   <!-- Motion -->
-  <script src="assets/vendor/gsap.min.js"></script>
-  <script src="assets/vendor/ScrollTrigger.min.js"></script>
+  <script src="assets/vendor/gsap.min.js" defer></script>
+  <script src="assets/vendor/ScrollTrigger.min.js" defer></script>
 
   <!-- App -->
   <script src="assets/js/api.js"></script>
