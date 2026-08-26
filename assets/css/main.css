@@ -2615,21 +2615,20 @@ table { border-collapse: collapse; width: 100%; }
 .sched-table { border: 1px solid var(--line-light); border-radius: var(--r-md); overflow: auto; background: #fff; }
 .sched-table table { font-size: .875rem; min-width: 560px; }
 .sched-table caption {
-  text-align: left;
+  text-align: center;
   padding: 14px 20px 9px;
-  font-family: var(--font-mono);
-  font-size: .6875rem;
-  font-weight: 500;
-  letter-spacing: .16em;
+  font-family: var(--font-sans);
+  font-size: clamp(.9rem, 1.25vw, 1.08rem);
+  font-weight: 700;
+  letter-spacing: .015em;
   line-height: 1.4;
-  text-transform: uppercase;
-  color: var(--slate-500);
+  color: var(--ink-900-txt);
   background: #fff;
 }
 .sched-table th {
-  text-align: left;
+  text-align: center;
   font-family: var(--font-mono);
-  font-size: .625rem; font-weight: 500;
+  font-size: clamp(.7rem, .85vw, .78rem); font-weight: 600;
   letter-spacing: .2em; text-transform: uppercase;
   color: var(--slate-500);
   background: var(--paper);
@@ -2645,13 +2644,13 @@ table { border-collapse: collapse; width: 100%; }
 .sched-table td:first-child { font-family: var(--font-sans); font-weight: 600; letter-spacing: .02em; }
 .sched-table .direct { color: var(--t-blue); font-weight: 500; }
 .sched-table tr.rt-group th {
-  text-align: left;
+  text-align: center;
   padding: 16px 20px 11px;
   border-bottom: 1px solid var(--line-light);
   background: #fff;
   color: var(--ink-900-txt);
   font-family: var(--font-sans);
-  font-size: .875rem;
+  font-size: clamp(.95rem, 1.2vw, 1.05rem);
   font-weight: 700;
   letter-spacing: .01em;
   line-height: 1.35;

@@ -105,21 +105,24 @@
   /* Inland offices are represented as ports for search and interaction, but
      do not have a published maritime route in the schedule data. Keep that
      distinction clear while still showing the requested illustrative link
-     from the Surabaya gateway to POSO. These paths stay out of routePaths so
-     they are never presented as a selectable direct service or dimmed as
-     part of a maritime result. */
-  var inlandConnectors = [{ from: 'SBY', to: 'PSO' }];
+     from the Surabaya gateway to POSO on the homepage. These paths stay out
+     of routePaths so they are never presented as a selectable direct service
+     or dimmed as part of a maritime result. */
+  var isHomepage = !!document.getElementById('journey') || /(^|\/)index\.html?$/.test(window.location.pathname) || window.location.pathname === '/';
+  var illustrativePaths = [];
+  var inlandConnectors = isHomepage ? [{ from: 'SBY', to: 'PSO' }] : [];
   inlandConnectors.forEach(function (connectorDef) {
     var A = byId[connectorDef.from], B = byId[connectorDef.to];
     if (!A || !B) return;
     var connector = svg('path', {
       d: curve(A, B),
-      class: 'map-route inland',
+      class: 'map-route illustrative-route',
       'data-from': connectorDef.from,
       'data-to': connectorDef.to,
       'aria-hidden': 'true'
     });
     routesG.appendChild(connector);
+    illustrativePaths.push(connector);
   });
 
   /* ---------- service graph (for transit-chain routing) ----------
@@ -676,6 +679,12 @@
         el2.style.opacity = '';
       });
     });
+    illustrativePaths.forEach(function (el2) {
+      el2.style.transition = 'none';
+      el2.style.strokeDasharray = 'none';
+      el2.style.strokeDashoffset = '';
+      el2.style.opacity = '';
+    });
     ports.forEach(function (p) {
       var core = portNodes[p.id] && portNodes[p.id].querySelector('.p-core');
       if (core) { core.classList.remove('pop'); core.style.animationDelay = ''; core.style.opacity = ''; }
@@ -723,6 +732,28 @@
       });
     });
 
+    // Draw the homepage-only illustrative Surabaya → Poso connector in the
+    // same solid, west-to-east reveal wave as the published routes. It is
+    // deliberately not part of routePaths, so search results remain factual.
+    illustrativePaths.forEach(function (el2, i) {
+      var L = el2.getTotalLength();
+      var delay = 0.18 + i * 0.08;
+      el2.style.transition = 'none';
+      el2.style.strokeDasharray = L;
+      el2.style.strokeDashoffset = L;
+      el2.style.opacity = '0';
+      requestAnimationFrame(function () { requestAnimationFrame(function () {
+        el2.style.transition = 'stroke-dashoffset 1.3s cubic-bezier(.4,0,.2,1) ' + delay + 's, opacity .4s ease ' + delay + 's';
+        el2.style.strokeDashoffset = '0';
+        el2.style.opacity = '';
+      }); });
+      revealTimers.push(setTimeout(function () {
+        el2.style.strokeDasharray = 'none';
+        el2.style.strokeDashoffset = '';
+        el2.style.transition = '';
+      }, 1550 + delay * 1000));
+    });
+
     // Ports fade in, west → east, just behind the wave.
     var portsOrdered = ports.slice().sort(function (a, b) { return a.x - b.x; });
     portsOrdered.forEach(function (p, i) {
@@ -748,6 +779,12 @@
           el2.style.strokeDashoffset = L;
         }
       });
+    });
+    illustrativePaths.forEach(function (el2) {
+      var L = el2.getTotalLength();
+      el2.style.strokeDasharray = L;
+      el2.style.strokeDashoffset = L;
+      el2.style.opacity = '0';
     });
     if ('IntersectionObserver' in window) {
       var seen = new IntersectionObserver(function (entries) {

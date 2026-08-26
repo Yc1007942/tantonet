@@ -128,40 +128,57 @@ async function generateImages() {
   return manifest;
 }
 
-async function encodeVideo(name, scale, codec, crfs, budget, extension) {
+async function encodeVideo(name, scale, codec, budget, extension, maxDuration) {
   if (!existsSync(SOURCE_VIDEO)) throw new Error(`Missing video input: assets/video/hero.mp4`);
   const temporary = join(GENERATED, `.${name}.${extension}`);
+  // A multi-minute 1080p source cannot be delivered within a few megabytes
+  // without destroying image quality. Hero media is an ambient loop, so use
+  // a short representative segment and spend the budget on useful bitrate.
+  // Reserve room for the container headers and metadata before calculating
+  // the target bitrate, then step down only if the muxed result is still over
+  // budget. This keeps the build deterministic instead of failing after a
+  // long CRF trial at an impossible size.
+  const reserve = 192 * 1024;
+  const duration = Math.max(1, Number(maxDuration) || 30);
+  const budgetKbps = Math.max(64, Math.floor(((budget - reserve) * 8) / duration / 1000 * 0.92));
+  const bitrates = [budgetKbps, Math.floor(budgetKbps * .86), Math.floor(budgetKbps * .72), Math.floor(budgetKbps * .60), Math.floor(budgetKbps * .48)];
   let chosen;
-  for (const crf of crfs) {
-    const args = ['-y', '-i', SOURCE_VIDEO, '-vf', `scale=-2:${scale}`, '-r', '24', '-an', '-pix_fmt', 'yuv420p'];
-    if (codec === 'h264') args.push('-c:v', 'libx264', '-preset', 'faster', '-crf', String(crf), '-movflags', '+faststart');
-    else args.push('-c:v', 'libvpx-vp9', '-b:v', '0', '-crf', String(crf), '-deadline', 'good', '-cpu-used', '4');
+  for (const kbps of bitrates) {
+    console.log(`[media] Encoding ${name}.${extension}: ${duration}s at ${kbps} kbps`);
+    const args = ['-y', '-i', SOURCE_VIDEO, '-t', String(duration), '-vf', `scale=-2:${scale}`, '-r', '24', '-an', '-pix_fmt', 'yuv420p'];
+    if (codec === 'h264') {
+      args.push('-c:v', 'libx264', '-preset', 'faster', '-b:v', `${kbps}k`, '-maxrate', `${kbps}k`, '-bufsize', `${kbps * 2}k`, '-movflags', '+faststart');
+    } else {
+      args.push('-c:v', 'libvpx-vp9', '-b:v', `${kbps}k`, '-maxrate', `${kbps}k`, '-bufsize', `${kbps * 2}k`, '-deadline', 'good', '-cpu-used', '4');
+    }
     args.push(temporary);
     await exec(ffmpeg, args, { maxBuffer: 1024 * 1024 * 8 });
     const size = (await stat(temporary)).size;
-    if (size <= budget || crf === crfs[crfs.length - 1]) {
-      chosen = { size, crf };
+    console.log(`[media] ${name}.${extension}: ${(size / 1024 / 1024).toFixed(2)} MiB`);
+    if (size <= budget || kbps === bitrates[bitrates.length - 1]) {
+      chosen = { size, kbps };
       break;
     }
   }
-  if (!chosen || chosen.size > budget) throw new Error(`${name}.${extension} exceeds ${budget} bytes (${chosen?.size || 0})`);
+  if (!chosen || chosen.size > budget) throw new Error(`${name}.${extension} exceeds ${budget} bytes (${chosen?.size || 0}) after bitrate fallbacks`);
   const buffer = await readFile(temporary);
   const path = await writeHashed(buffer, `hero-${name}`, extension);
   await rm(temporary, { force: true });
-  return { path, bytes: chosen.size, crf: chosen.crf };
+  return { path, bytes: chosen.size, bitrateKbps: chosen.kbps, durationSeconds: duration };
 }
 
 async function generateVideo(manifest) {
-  // CRF fallbacks trade a little fine grain for a guaranteed mobile-friendly
-  // transfer. Both codecs are generated so Safari/Chromium can choose well.
+  // Both codecs are generated so Safari/Chromium can choose well. The hero is
+  // an ambient loop, so shorter segments preserve visual quality and keep the
+  // deferred media transfer small on both connection types.
   const variants = {};
-  for (const [name, scale, crfs, budget] of [
-    ['mobile', 540, [31, 34, 36, 38], 2 * 1024 * 1024],
-    ['desktop', 1080, [28, 31, 33, 35], 4 * 1024 * 1024]
+  for (const [name, scale, duration, budget] of [
+    ['mobile', 540, 30, 2 * 1024 * 1024],
+    ['desktop', 1080, 45, 4 * 1024 * 1024]
   ]) {
     variants[name] = {
-      webm: await encodeVideo(name, scale, 'vp9', crfs, budget, 'webm'),
-      mp4: await encodeVideo(name, scale, 'h264', crfs, budget, 'mp4')
+      webm: await encodeVideo(name, scale, 'vp9', budget, 'webm', duration),
+      mp4: await encodeVideo(name, scale, 'h264', budget, 'mp4', duration)
     };
   }
   manifest.video = variants;
