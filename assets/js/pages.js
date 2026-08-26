@@ -54,7 +54,7 @@
       if (!rows.length) return;
       seen[region] = true;
       body.insertAdjacentHTML('beforeend',
-        '<tr class="rt-group"><td colspan="4">' + esc(region) + '</td></tr>');
+        '<tr class="rt-group"><th scope="rowgroup" colspan="4">' + esc(region) + '</th></tr>');
       rows.forEach(function (r) {
         var routing = r.via
           ? 'Via ' + portName(r.via)
@@ -71,7 +71,7 @@
       if (!seen[r.region]) {
         seen[r.region] = true;
         body.insertAdjacentHTML('beforeend',
-          '<tr class="rt-group"><td colspan="4">' + esc(r.region) + '</td></tr>');
+          '<tr class="rt-group"><th scope="rowgroup" colspan="4">' + esc(r.region) + '</th></tr>');
       }
     });
     var count = $('#routeCount');
