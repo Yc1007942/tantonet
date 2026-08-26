@@ -1532,6 +1532,13 @@ table { border-collapse: collapse; width: 100%; }
   white-space: nowrap;
 }
 .stat-num .suffix { color: var(--t-azure); }
+.stat-num .stat-unit {
+  color: inherit;
+  font-size: .55em;
+  font-weight: 700;
+  letter-spacing: -.02em;
+  white-space: nowrap;
+}
 .stat-label {
   font-size: 1.0625rem;
   font-weight: 700;
