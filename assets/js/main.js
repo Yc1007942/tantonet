@@ -403,8 +403,9 @@
         if (s.format === 'year') countAttrs['data-format'] = 'year';
         var numInner = el('span', countAttrs);
         numInner.textContent = s.format === 'year' ? String(s.value) : '0';
+        if (s.prefix) num.appendChild(document.createTextNode(s.prefix));
+        num.appendChild(numInner);
         if (s.suffix) num.appendChild(el('span', { class: 'suffix' }, s.suffix));
-        num.insertBefore(numInner, s.suffix ? num.firstChild : null);
         row.appendChild(num);
         var meta = el('div');
         meta.appendChild(el('p', { class: 'stat-label' }, esc(s.label)));

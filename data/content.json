@@ -9,7 +9,7 @@
     { "value": 70000, "suffix": "+", "label": "TEU total fleet capacity", "detail": "Combined TEU capacity of the fleet." },
     { "value": 39, "label": "Ports served", "detail": "Destinations across Sumatra, Java, Kalimantan, Sulawesi, Nusa Tenggara, Maluku and Papua." },
     { "value": 32, "label": "Branch offices", "detail": "32 branch offices across the archipelago, including the Surabaya head office." },
-    { "value": 60000, "suffix": "+", "label": "ISO containers", "detail": "New and used ISO containers of all sizes and types; average container age < 5 years." },
+    { "value": 5, "prefix": "<", "label": "ISO containers", "detail": "New and used ISO containers of all sizes and types; average container age less than five years." },
     { "value": 1000000, "suffix": "+", "label": "Containers moved each year", "detail": "More than one million containers entrusted to Tanto by customers every year." }
   ],
   "milestones": [
