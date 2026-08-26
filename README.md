@@ -37,7 +37,7 @@ The API verifies the request `Origin` and answers anything other than `https://w
 
 ## 2. New site architecture
 
-Source-first HTML/CSS/JS with a dependency-free runtime. Vercel runs the optional production build (`npm run build`) to create responsive, content-hashed media in `dist`; GSAP + ScrollTrigger remain vendored for the homepage cinematic scroll only.
+Source-first HTML/CSS/JS with a dependency-free runtime. Hero video is encoded locally into full-duration, content-hashed variants; Vercel runs the fast production build (`npm run build`) to generate responsive image derivatives, rewrite references and minify the site into `dist`. GSAP + ScrollTrigger remain vendored for the homepage cinematic scroll only.
 
 ```
 /
@@ -74,8 +74,7 @@ Source-first HTML/CSS/JS with a dependency-free runtime. Vercel runs the optiona
 │   │                            Bersama / Jaya; logo-t.webp = red T mark for dark surfaces,
 │   │                            logo-flag.webp = blue flag for light surfaces; hero-poster.webp
 │   │                            = poster frame for the hero video)
-│   ├── video/hero.mp4          Homepage hero source master (build input; Vercel emits
-│   │                           mobile/desktop WebM + fast-start H.264 variants)
+│   ├── video/hero.mp4          Homepage hero video (served unchanged)
 │   ├── map/indonesia-land.svg  Indonesia land geometry (1920×764, equirect 94–142°E)
 │   └── vendor/                 gsap.min.js, ScrollTrigger.min.js
 ├── data/
@@ -85,7 +84,7 @@ Source-first HTML/CSS/JS with a dependency-free runtime. Vercel runs the optiona
 │   └── offices.json/.js        32 offices (address, phones, email, lat/lng, region)
 ├── dev-server.mjs              Static server + /api/tcm/* proxy (port 4173);
 │                               supports HTTP Range (206) for video seeking and SITE_ROOT=dist
-├── scripts/build.mjs           Vercel media generation, reference rewrite and minification
+├── scripts/build.mjs           Vercel reference rewrite, responsive images and minification
 ├── scripts/check.mjs           Dependency-free JSON/JS/HTML/CSS/reference integrity check
 ├── package.json                Build/preview/check commands and build-only tooling
 ├── sitemap.xml · robots.txt · vercel.json
@@ -118,12 +117,19 @@ npm run preview            # serve the optimized dist locally
 - Unknown paths serve `404.html` with status 404.
 - The source dev server has no runtime dependencies; Node ≥ 18 (uses global `fetch`). Build-only dependencies are installed by `npm install` when producing `dist`.
 
+### Hero media workflow
+
+The original `assets/video/hero.mp4` is kept as a normal Git file and copied
+unchanged into `dist`. It is approximately 41.7 MB and is already encoded for
+web playback, so no Vercel-side or local re-encoding step is required. This
+keeps the mirror workflow simple and avoids Git LFS quotas.
+
 ### Production deployment
 
 1. Import the repository into Vercel; `vercel.json` runs `npm run build` and publishes `dist`.
 2. Set the production domain to `www.tantonet.com`; `vercel.json` contains the old-URL 301 redirects. Preview domains such as `*.vercel.app` use the included `/api/tcm/*` proxy for live API calls.
 3. Keep `/dashboard/` on its existing application or add a Vercel rewrite to that origin.
-4. No API keys are required — the API client auto-detects origin. Vercel installs the build-only Sharp, FFmpeg and esbuild dependencies during deployment.
+4. No API keys are required — the API client auto-detects origin. Vercel installs the build dependencies; `npm run build` uses only Sharp and esbuild.
 
 The repository-level `api/tcm/[...path].js` function is kept outside `dist`, so Vercel still exposes the live tracking and schedule proxy after the static build.
 

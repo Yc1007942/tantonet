@@ -15,7 +15,7 @@ async function walk(dir) {
   for (const entry of await readdir(dir, { withFileTypes: true })) {
     const path = join(dir, entry.name);
     if (entry.isDirectory()) {
-      if (!['.git', 'node_modules', '.vercel'].includes(entry.name)) out.push(...await walk(path));
+      if (!['.git', 'node_modules', '.vercel', '.tanto-media-cache'].includes(entry.name)) out.push(...await walk(path));
     } else out.push(path);
   }
   return out;
@@ -80,17 +80,6 @@ for (const css of files.filter((file) => extname(file).toLowerCase() === '.css')
 for (let i = 1; i <= 6; i += 1) {
   const portrait = join(ROOT, 'assets', 'img', `customer-portrait-0${i}.webp`);
   if (!existsSync(portrait)) errors.push(`Missing customer portrait: ${relative(ROOT, portrait)}`);
-}
-
-const dist = join(ROOT, 'dist');
-if (existsSync(join(dist, 'assets', 'generated'))) {
-  const generated = await walk(join(dist, 'assets', 'generated'));
-  for (const file of generated) {
-    const rel = relative(dist, file).split(sep).join('/');
-    const size = (await stat(file)).size;
-    if (/hero-mobile\.(?:webm|mp4)$/.test(rel) && size > 2 * 1024 * 1024) errors.push(`Mobile hero budget exceeded: ${rel}`);
-    if (/hero-desktop\.(?:webm|mp4)$/.test(rel) && size > 4 * 1024 * 1024) errors.push(`Desktop hero budget exceeded: ${rel}`);
-  }
 }
 
 if (errors.length) {

@@ -7,7 +7,6 @@
   },
   "allowScripts": {
     "esbuild": true,
-    "ffmpeg-static": true,
     "sharp": true
   },
   "scripts": {
@@ -17,7 +16,6 @@
   },
   "devDependencies": {
     "esbuild": "0.24.2",
-    "ffmpeg-static": "5.2.0",
     "sharp": "0.33.5"
   }
 }

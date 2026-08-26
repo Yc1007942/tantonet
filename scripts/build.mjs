@@ -1,31 +1,25 @@
 /*
  * TANTO production build
  *
- * The repository remains source-first for local development. Vercel runs this
- * script to create a small, immutable-media dist tree: responsive image
- * derivatives, mobile/desktop hero video variants, rewritten references and
- * minified CSS/JS. Raw masters are inputs only and are never copied to dist.
+ * The repository remains source-first for local development. Vercel creates
+ * the dist tree with responsive image derivatives, rewritten references and
+ * minified CSS/JS. The original hero video is copied unchanged so local
+ * development and production use the same media file.
  */
 import { createHash } from 'node:crypto';
-import { execFile } from 'node:child_process';
-import { promisify } from 'node:util';
 import { existsSync } from 'node:fs';
 import { readFile, writeFile, mkdir, readdir, stat, rm, cp, open } from 'node:fs/promises';
 import { dirname, extname, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const exec = promisify(execFile);
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const OUT = resolve(ROOT, 'dist');
 const GENERATED = join(OUT, 'assets', 'generated');
-const SOURCE_VIDEO = join(ROOT, 'assets', 'video', 'hero.mp4');
 
 let sharp;
-let ffmpeg;
 let esbuild;
 try {
   sharp = (await import('sharp')).default;
-  ffmpeg = (await import('ffmpeg-static')).default;
   esbuild = await import('esbuild');
 } catch (error) {
   console.error('Build dependencies are missing. Run npm install before building:', error.message);
@@ -40,10 +34,10 @@ const imageInputs = [
 ];
 
 const copySkip = new Set([
-  '.git', '.github', 'node_modules', 'dist', '.vercel', 'scripts', 'api'
+  '.git', '.github', 'node_modules', 'dist', '.vercel', '.tanto-media-cache', 'scripts', 'api'
 ]);
 const fileSkip = new Set(['package.json', 'package-lock.json', 'vercel.json', 'dev-server.mjs', 'README.md']);
-const rawMediaSkip = new Set(['assets/video/hero.mp4', 'assets/img/tanto-port.jpg']);
+const rawMediaSkip = new Set(['assets/img/tanto-port.jpg']);
 
 async function walk(dir) {
   const result = [];
@@ -51,7 +45,7 @@ async function walk(dir) {
     const path = join(dir, entry.name);
     const rel = relative(ROOT, path).split(sep).join('/');
     if (entry.isDirectory()) {
-      if (!copySkip.has(entry.name) && !rel.startsWith('assets/generated/')) result.push(...await walk(path));
+      if (!copySkip.has(entry.name)) result.push(...await walk(path));
     } else if (!fileSkip.has(rel) && !rawMediaSkip.has(rel) && !(rel.startsWith('data/') && rel.endsWith('.json'))) {
       result.push(path);
     }
@@ -64,7 +58,7 @@ async function walkAll(dir) {
   for (const entry of await readdir(dir, { withFileTypes: true })) {
     const path = join(dir, entry.name);
     if (entry.isDirectory()) {
-      if (!['.git', 'node_modules', 'dist', '.vercel'].includes(entry.name)) result.push(...await walkAll(path));
+      if (!['.git', 'node_modules', 'dist', '.vercel', '.tanto-media-cache'].includes(entry.name)) result.push(...await walkAll(path));
     } else result.push(path);
   }
   return result;
@@ -110,7 +104,7 @@ async function writeHashed(buffer, stem, extension) {
 
 async function generateImages() {
   await mkdir(GENERATED, { recursive: true });
-  const manifest = { generatedAt: new Date().toISOString(), images: {}, video: {} };
+  const manifest = { generatedAt: new Date().toISOString(), images: {} };
   for (const input of imageInputs) {
     const source = join(ROOT, input.source);
     if (!existsSync(source)) throw new Error(`Missing image input: ${input.source}`);
@@ -128,63 +122,6 @@ async function generateImages() {
   return manifest;
 }
 
-async function encodeVideo(name, scale, codec, budget, extension, maxDuration) {
-  if (!existsSync(SOURCE_VIDEO)) throw new Error(`Missing video input: assets/video/hero.mp4`);
-  const temporary = join(GENERATED, `.${name}.${extension}`);
-  // A multi-minute 1080p source cannot be delivered within a few megabytes
-  // without destroying image quality. Hero media is an ambient loop, so use
-  // a short representative segment and spend the budget on useful bitrate.
-  // Reserve room for the container headers and metadata before calculating
-  // the target bitrate, then step down only if the muxed result is still over
-  // budget. This keeps the build deterministic instead of failing after a
-  // long CRF trial at an impossible size.
-  const reserve = 192 * 1024;
-  const duration = Math.max(1, Number(maxDuration) || 30);
-  const budgetKbps = Math.max(64, Math.floor(((budget - reserve) * 8) / duration / 1000 * 0.92));
-  const bitrates = [budgetKbps, Math.floor(budgetKbps * .86), Math.floor(budgetKbps * .72), Math.floor(budgetKbps * .60), Math.floor(budgetKbps * .48)];
-  let chosen;
-  for (const kbps of bitrates) {
-    console.log(`[media] Encoding ${name}.${extension}: ${duration}s at ${kbps} kbps`);
-    const args = ['-y', '-i', SOURCE_VIDEO, '-t', String(duration), '-vf', `scale=-2:${scale}`, '-r', '24', '-an', '-pix_fmt', 'yuv420p'];
-    if (codec === 'h264') {
-      args.push('-c:v', 'libx264', '-preset', 'faster', '-b:v', `${kbps}k`, '-maxrate', `${kbps}k`, '-bufsize', `${kbps * 2}k`, '-movflags', '+faststart');
-    } else {
-      args.push('-c:v', 'libvpx-vp9', '-b:v', `${kbps}k`, '-maxrate', `${kbps}k`, '-bufsize', `${kbps * 2}k`, '-deadline', 'good', '-cpu-used', '4');
-    }
-    args.push(temporary);
-    await exec(ffmpeg, args, { maxBuffer: 1024 * 1024 * 8 });
-    const size = (await stat(temporary)).size;
-    console.log(`[media] ${name}.${extension}: ${(size / 1024 / 1024).toFixed(2)} MiB`);
-    if (size <= budget || kbps === bitrates[bitrates.length - 1]) {
-      chosen = { size, kbps };
-      break;
-    }
-  }
-  if (!chosen || chosen.size > budget) throw new Error(`${name}.${extension} exceeds ${budget} bytes (${chosen?.size || 0}) after bitrate fallbacks`);
-  const buffer = await readFile(temporary);
-  const path = await writeHashed(buffer, `hero-${name}`, extension);
-  await rm(temporary, { force: true });
-  return { path, bytes: chosen.size, bitrateKbps: chosen.kbps, durationSeconds: duration };
-}
-
-async function generateVideo(manifest) {
-  // Both codecs are generated so Safari/Chromium can choose well. The hero is
-  // an ambient loop, so shorter segments preserve visual quality and keep the
-  // deferred media transfer small on both connection types.
-  const variants = {};
-  for (const [name, scale, duration, budget] of [
-    ['mobile', 540, 30, 2 * 1024 * 1024],
-    ['desktop', 1080, 45, 4 * 1024 * 1024]
-  ]) {
-    variants[name] = {
-      webm: await encodeVideo(name, scale, 'vp9', budget, 'webm', duration),
-      mp4: await encodeVideo(name, scale, 'h264', budget, 'mp4', duration)
-    };
-  }
-  manifest.video = variants;
-  return manifest;
-}
-
 function rewriteText(text, manifest) {
   for (const [source, variants] of Object.entries(manifest.images)) {
     const preferred = variants[variants.length - 1];
@@ -194,16 +131,6 @@ function rewriteText(text, manifest) {
     [`../${source}`, `/${source}`, `../${relativeAsset}`, source].forEach((needle) => {
       text = text.replaceAll(needle, preferred.webp);
     });
-  }
-  const video = manifest.video;
-  if (video?.mobile && video.desktop) {
-    const sources = [
-      `<source data-src="${video.mobile.webm.path}" type="video/webm" media="(max-width: 900px)">`,
-      `<source data-src="${video.mobile.mp4.path}" type="video/mp4" media="(max-width: 900px)">`,
-      `<source data-src="${video.desktop.webm.path}" type="video/webm">`,
-      `<source data-src="${video.desktop.mp4.path}" type="video/mp4">`
-    ].join('');
-    text = text.replace(/<source\s+data-src=["'](?:assets\/|\.\.\/assets\/)video\/hero\.mp4["'][^>]*>/i, sources);
   }
   return text;
 }
@@ -241,8 +168,8 @@ async function rewriteAssets(manifest) {
     const rewritten = rewriteText(responsive, manifest);
     if (rewritten !== original) await writeFile(file, rewritten);
   }
-  // The source masters are intentionally omitted from copySourceTree. A build
-  // reference audit will catch a missed rewrite before Vercel serves dist.
+  // A build reference audit catches any missed rewrite before Vercel serves
+  // dist. The hero video remains a regular source asset and is copied above.
 }
 
 async function minifyAssets() {
@@ -312,7 +239,6 @@ async function validateDist() {
       if (!existsSync(target)) throw new Error(`Unresolved CSS reference ${ref} in ${relative(OUT, css)}`);
     }
   }
-  if (existsSync(join(OUT, 'assets', 'video', 'hero.mp4'))) throw new Error('Raw hero video leaked into dist');
   if (existsSync(join(OUT, 'assets', 'img', 'tanto-port.jpg'))) throw new Error('Raw 4.4MB journey image leaked into dist');
 }
 
@@ -320,11 +246,9 @@ async function main() {
   await ensureNoLfsPointers();
   await copySourceTree();
   const manifest = await generateImages();
-  await generateVideo(manifest);
   await rewriteAssets(manifest);
   await minifyAssets();
   await validateDist();
-  await writeFile(join(GENERATED, 'media-manifest.json'), JSON.stringify(manifest, null, 2) + '\n');
   console.log(`Tanto production build ready: ${relative(ROOT, OUT)}`);
 }
 
