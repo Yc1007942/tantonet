@@ -2626,7 +2626,9 @@ table { border-collapse: collapse; width: 100%; }
   background: #fff;
 }
 .sched-table th {
-  text-align: center;
+  /* Column labels share the same left inset as their body cells. Regional
+     group headings below override this to remain centered across the table. */
+  text-align: left;
   font-family: var(--font-mono);
   font-size: clamp(.7rem, .85vw, .78rem); font-weight: 600;
   letter-spacing: .2em; text-transform: uppercase;
