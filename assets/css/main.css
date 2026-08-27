@@ -1356,7 +1356,9 @@ table { border-collapse: collapse; width: 100%; }
   position: absolute;
   z-index: 30;
   width: 264px;
-  background: #0d1b30;
+  /* Keep map geometry visible beneath hover/focus details while preserving
+     enough contrast for the small data panel. */
+  background: rgba(13,27,48,.62);
   border: 1px solid rgba(98,197,255,.3);
   border-radius: var(--r-md);
   padding: 16px 18px;
@@ -1401,7 +1403,9 @@ table { border-collapse: collapse; width: 100%; }
   bottom: 12px;
   z-index: 25;
   max-width: 560px;
-  background: rgba(13,26,46,.92);
+  /* Route results sit over animated paths; translucency keeps the selected
+     route and surrounding network legible instead of hiding a map slice. */
+  background: rgba(13,26,46,.54);
   border: 1px solid rgba(98,197,255,.28);
   border-left: 3px solid #ffd21f;
   border-radius: var(--r-md);
@@ -1502,7 +1506,7 @@ table { border-collapse: collapse; width: 100%; }
   position: fixed;
   left: 0; right: 0; bottom: 0;
   z-index: 130;
-  background: #0d1b30;
+  background: rgba(13,27,48,.70);
   border-top: 1px solid rgba(98,197,255,.3);
   border-radius: 12px 12px 0 0;
   padding: 22px 22px calc(22px + env(safe-area-inset-bottom));
@@ -3266,7 +3270,7 @@ table { border-collapse: collapse; width: 100%; }
   letter-spacing: .18em;
   text-transform: uppercase;
   color: #fff;
-  background: rgba(6,13,24,.9);
+  background: rgba(6,13,24,.58);
   border: 1px solid var(--line-dark);
   padding: 5px 9px;
   opacity: 0;
