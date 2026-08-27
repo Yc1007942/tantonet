@@ -104,13 +104,15 @@
 
   /* Inland offices are represented as ports for search and interaction, but
      do not have a published maritime route in the schedule data. Keep that
-     distinction clear while still showing the requested illustrative link
-     from the Surabaya gateway to POSO on the homepage. These paths stay out
-     of routePaths so they are never presented as a selectable direct service
-     or dimmed as part of a maritime result. */
-  var isHomepage = !!document.getElementById('journey') || /(^|\/)index\.html?$/.test(window.location.pathname) || window.location.pathname === '/';
+     distinction clear while still showing the requested illustrative links
+     from both gateways to POSO on every map. These paths stay out of
+     routePaths so they are never presented as selectable direct services or
+     dimmed as part of a maritime result. */
   var illustrativePaths = [];
-  var inlandConnectors = isHomepage ? [{ from: 'SBY', to: 'PSO' }] : [];
+  var inlandConnectors = [
+    { from: 'SBY', to: 'PSO' },
+    { from: 'JKT', to: 'PSO' }
+  ];
   inlandConnectors.forEach(function (connectorDef) {
     var A = byId[connectorDef.from], B = byId[connectorDef.to];
     if (!A || !B) return;
@@ -732,9 +734,9 @@
       });
     });
 
-    // Draw the homepage-only illustrative Surabaya → Poso connector in the
-    // same solid, west-to-east reveal wave as the published routes. It is
-    // deliberately not part of routePaths, so search results remain factual.
+    // Draw the illustrative gateway → Poso connectors in the same solid,
+    // west-to-east reveal wave as the published routes. They are deliberately
+    // not part of routePaths, so search results remain factual.
     illustrativePaths.forEach(function (el2, i) {
       var L = el2.getTotalLength();
       var delay = 0.18 + i * 0.08;

@@ -12,7 +12,7 @@
 import { createServer } from 'node:http';
 import { createReadStream } from 'node:fs';
 import { readFile, stat } from 'node:fs/promises';
-import { extname, join, normalize, resolve } from 'node:path';
+import { extname, join, normalize, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = fileURLToPath(new URL('.', import.meta.url));
@@ -39,10 +39,19 @@ const MIME = {
 };
 
 function safePath(urlPath) {
-  let p = decodeURIComponent(urlPath.split('?')[0]);
+  let p;
+  try {
+    p = decodeURIComponent(urlPath.split('?')[0]);
+  } catch {
+    return null;
+  }
   if (p === '/') p = '/index.html';
   const full = normalize(join(SITE_ROOT, p));
-  if (full !== SITE_ROOT && !full.startsWith(SITE_ROOT + '/')) return null;
+  // Keep the root itself valid too (SITE_ROOT may be `/` when a shell or IDE
+  // supplies that environment value). The previous `SITE_ROOT + '/'` check
+  // produced `//` for that case and incorrectly returned 400 for `/`.
+  const rootPrefix = SITE_ROOT.endsWith(sep) ? SITE_ROOT : SITE_ROOT + sep;
+  if (full !== SITE_ROOT && !full.startsWith(rootPrefix)) return null;
   return full;
 }
 
@@ -160,5 +169,6 @@ process.on('uncaughtException', (e) => {
 
 server.listen(PORT, () => {
   console.log(`Tanto dev server → http://localhost:${PORT}${process.env.SITE_ROOT ? ` (${process.env.SITE_ROOT})` : ''}`);
+  console.log(`Site root       → ${SITE_ROOT}`);
   console.log(`API proxy       → /api/tcm/* → ${API_BASE}(origin: www.tantonet.com)`);
 });
