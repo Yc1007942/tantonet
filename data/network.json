@@ -9,7 +9,7 @@
     }
   },
   "ports": [
-    { "id": "SBY", "name": "SURABAYA", "mapLabel": "SURABAYA (Head Office)", "region": "Jawa", "x": 748.72, "y": 594.3, "hub": true, "headquarters": true, "apiId": 10 },
+    { "id": "SBY", "name": "SURABAYA", "region": "Jawa", "x": 748.72, "y": 594.3, "hub": true, "headquarters": true, "apiId": 10 },
     { "id": "JKT", "name": "JAKARTA", "region": "Jawa", "x": 514.84, "y": 549.608, "hub": true, "apiId": 4 },
     { "id": "MKS", "name": "MAKASSAR", "region": "Sulawesi", "x": 1017.28, "y": 509.908, "hub": true, "apiId": 6 },
     { "id": "MDN", "name": "MEDAN", "region": "Sumatra", "x": 186.888, "y": 160.192, "hub": true, "apiId": 7 },

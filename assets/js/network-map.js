@@ -103,9 +103,9 @@
   });
 
   /* Non-published / illustrative links are represented for map context and
-     interaction, but remain separate from the official service graph. These
-     paths stay out of routePaths and are selectable only as presentation-
-     only connections. */
+     route-finding, but remain separate from the official schedule dataset.
+     They stay out of routePaths so published-route styling and metadata are
+     never inferred from these presentation-only connections. */
   var illustrativePaths = [];
   // Presentation-only routes live beside the published network data. They
   // are intentionally not included in `routes`, so schedules and the service
@@ -137,9 +137,18 @@
      exactly how "transits via X" operates.
      Edge cost = one service change; ties broken by higher
      published frequency, so trunk routes (e.g. SBY–MKS) win.   */
-  var edges = [];   // {a, b, seq:[ids], freqMid, region, direct, label}
-  function addEdge(a, b, seq, freqMid, region, direct, label) {
-    edges.push({ a: a, b: b, seq: seq, freqMid: freqMid, region: region, direct: direct, label: label });
+  var edges = [];   // {a, b, seq:[ids], freqMid, region, direct, label, illustrative}
+  function addEdge(a, b, seq, freqMid, region, direct, label, illustrative) {
+    edges.push({
+      a: a,
+      b: b,
+      seq: seq,
+      freqMid: freqMid,
+      region: region,
+      direct: direct,
+      label: label,
+      illustrative: !!illustrative
+    });
   }
   routes.forEach(function (r) {
     if (!byId[r.from] || !byId[r.to]) return;
@@ -156,6 +165,13 @@
         addEdge(seq[i], seq[i + 1], [seq[i], seq[i + 1]], 0, r.region, false, 'transfer'); // transfer leg
       }
     }
+  });
+  // Reference-map connectors are valid graph legs for visual route finding,
+  // but carry a modest cost penalty so a fully published chain always wins.
+  // Their metadata remains distinct and is never exposed as schedule data.
+  illustrativeRoutes.forEach(function (r) {
+    if (!byId[r.from] || !byId[r.to]) return;
+    addEdge(r.from, r.to, [r.from, r.to], 0, byId[r.to].region, true, 'indicative', true);
   });
   var adj = {};
   ports.forEach(function (p) { adj[p.id] = []; });
@@ -180,7 +196,7 @@
         var e = edges[ei];
         var v = e.a === u ? e.b : e.a;
         if (done[v]) return;
-        var c = dist[u] + 1000 - e.freqMid;
+        var c = dist[u] + 1000 - e.freqMid + (e.illustrative ? 250 : 0);
         if (c < dist[v]) { dist[v] = c; prev[v] = { node: u, edge: e }; }
       });
     }
@@ -194,7 +210,11 @@
       var seq = (e.a === last) ? e.seq : e.seq.slice().reverse();
       for (var i = 1; i < seq.length; i++) chain.push(seq[i]);
     });
-    return { chain: chain, edges: chainEdges };
+    return {
+      chain: chain,
+      edges: chainEdges,
+      illustrative: chainEdges.some(function (edge) { return edge.illustrative; })
+    };
   }
 
 
@@ -515,10 +535,9 @@
     if (!A || !B) return;
     setEndpointLabels(fromId, toId);
     var result = findChain(fromId, toId);
-    // Illustrative links are presentation-only rather than published
-    // maritime services. Treat them as selectable routes so they get the
-    // same highlight/fade lifecycle and voyage beacon without contaminating
-    // the published service graph or schedule data.
+    // Direct illustrative links remain as a defensive fallback if a malformed
+    // graph cannot resolve them. Normal searches include these connectors as
+    // weighted graph legs, allowing chains such as Jakarta→Surabaya→Weda.
     var illustrative = illustrativePaths.filter(function (path) {
       var a = path.getAttribute('data-from');
       var b = path.getAttribute('data-to');
@@ -528,9 +547,24 @@
       result = {
         chain: [fromId, toId],
         illustrative: true,
-        edges: [{ label: 'indicative', direct: true, region: B.region }]
+        edges: [{
+          a: fromId,
+          b: toId,
+          label: 'indicative',
+          direct: true,
+          region: B.region,
+          illustrative: true
+        }]
       };
     }
+    var selectedIllustrativePaths = illustrativePaths.filter(function (path) {
+      var a = path.getAttribute('data-from');
+      var b = path.getAttribute('data-to');
+      return !!result && result.edges.some(function (edge) {
+        return edge.illustrative &&
+          ((edge.a === a && edge.b === b) || (edge.a === b && edge.b === a));
+      });
+    });
     stopVoyage();
     while (selG && selG.firstChild) selG.removeChild(selG.firstChild);
     ports.forEach(function (p) {
@@ -542,7 +576,7 @@
     illustrativePaths.forEach(function (el2) {
       // Keep the selected illustrative connector bright; all other map
       // connectors fade exactly like published routes.
-      el2.classList.toggle('dim', !!result && el2 !== illustrative);
+      el2.classList.toggle('dim', !!result && selectedIllustrativePaths.indexOf(el2) === -1);
     });
 
     if (!result) {
@@ -586,7 +620,7 @@
     // Info: full chain + per-leg frequency + routing.
     var viaPorts = chain.slice(1, -1).map(function (id) { return byId[id].name; });
     var routingTxt = result.illustrative
-      ? 'Indicative connection'
+      ? (viaPorts.length ? 'Indicative via ' + viaPorts.join(' · ') : 'Indicative connection')
       : (viaPorts.length ? 'Via ' + viaPorts.join(' · ') : 'Direct');
     var freqTxt = result.edges.map(function (e) { return e.label; }).join(' · ');
     var regionTxt = (!viaPorts.length && result.edges[0] && result.edges[0].direct) ? ' · ' + result.edges[0].region : '';
@@ -604,7 +638,7 @@
       openSheet(A.name + ' → ' + B.name, routingTxt, [
         { id: 'sheetFrom', value: chain.map(function (id) { return byId[id].name; }).join(' · ') },
         { id: 'sheetFreq', value: freqTxt },
-        { id: 'sheetVia', value: result.illustrative ? 'Indicative connection' : (viaPorts.length ? 'Transits ' + viaPorts.length + ' port' + (viaPorts.length > 1 ? 's' : '') : 'Direct connection') }
+        { id: 'sheetVia', value: result.illustrative ? routingTxt : (viaPorts.length ? 'Transits ' + viaPorts.length + ' port' + (viaPorts.length > 1 ? 's' : '') : 'Direct connection') }
       ], '/schedules/?from=' + fromId + '&to=' + toId);
     }
 
