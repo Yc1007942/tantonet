@@ -12,7 +12,8 @@
   "scripts": {
     "build": "node scripts/build.mjs",
     "preview": "SITE_ROOT=dist node dev-server.mjs",
-    "check": "node scripts/check.mjs"
+    "check": "node scripts/check.mjs && node scripts/check-map.mjs",
+    "map:overlay": "node scripts/check-map.mjs --overlay /tmp/tanto-map-calibration.png"
   },
   "devDependencies": {
     "esbuild": "0.24.2",

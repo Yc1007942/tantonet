@@ -20,12 +20,22 @@
   var OFFICES = window.TANTO_OFFICES || { offices: [] };
   var reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-  /* Map projection — identical to data/network.json ("map" meta):
-     equirectangular, lon 94–142E, lat -11.5…7.6N, 40px per degree,
-     viewBox 0 0 1920 764. */
+  /* The land silhouette is a stylized illustration, not a geographic map.
+     Office dots therefore reuse the artwork-calibrated network coordinates;
+     latitude/longitude projection is retained only as a data fallback. */
   var MAP_W = 1920, MAP_H = 764;
   function project(lat, lng) {
     return { x: (lng - 94) * 40, y: (7.6 - lat) * 40 };
+  }
+  var mapPortsByName = {};
+  (NETWORK.ports || []).forEach(function (port) {
+    mapPortsByName[String(port.name || '').toUpperCase()] = port;
+    if (port.alias) mapPortsByName[String(port.alias).toUpperCase()] = port;
+  });
+  function officeMapPoint(office) {
+    var port = mapPortsByName[String(office.city || '').toUpperCase()] ||
+      mapPortsByName[String(office.alias || '').toUpperCase()];
+    return port ? { x: port.x, y: port.y } : project(office.lat, office.lng);
   }
 
   function $(sel, ctx) { return (ctx || document).querySelector(sel); }
@@ -158,10 +168,15 @@
     // then centre-crop the 1920×764 projection to the panel box.
     if (dots) {
       dots.innerHTML = offices.map(function (o, i) {
+        // The reference map labels the Tangkian terminal (the LUWUK office)
+        // by its terminal name; keep Morowali's public city label intact even
+        // though its office record uses Bungku as an alias.
+        var mapName = o.headquarters ? o.city + ' (Head Office)' :
+          (o.city === 'LUWUK' && o.alias ? o.alias : o.city);
         return '<button type="button" class="o-dot' + (o.headquarters ? ' hq' : '') + '" ' +
           'data-idx="' + i + '" data-region="' + esc(o.region) + '" ' +
-          'aria-label="' + esc(o.city) + ' office" title="' + esc(o.city) + '">' +
-          '<span class="o-dot-label">' + esc(o.city) + '</span></button>';
+          'aria-label="' + esc(mapName) + ' office" title="' + esc(mapName) + '">' +
+          '<span class="o-dot-label">' + esc(mapName) + '</span></button>';
       }).join('');
       var dotEls = $all('.o-dot', dots);
       function layoutDots() {
@@ -173,7 +188,7 @@
         offices.forEach(function (o, i) {
           var d = dotEls[i];
           if (!d) return;
-          var p = project(o.lat, o.lng);
+          var p = officeMapPoint(o);
           d.style.left = ((p.x - offX) / cropW * 100).toFixed(3) + '%';
           d.style.top = ((p.y - offY) / cropH * 100).toFixed(3) + '%';
         });

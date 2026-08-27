@@ -1246,6 +1246,14 @@ table { border-collapse: collapse; width: 100%; }
   stroke-dasharray: 2 5;
   opacity: .42;
 }
+.map-route.illustrative-route {
+  /* Source-of-truth connectors (e.g. Morowali–Weda) use the same solid
+     geometry and reveal animation as published direct services. */
+  stroke: var(--t-azure);
+  stroke-width: 1.4;
+  stroke-dasharray: none;
+  opacity: .5;
+}
 .map-route.dim { opacity: .07; }
 /* Selected route — one continuous luminous yellow line (drawn in #mapSelG). */
 .map-sel {

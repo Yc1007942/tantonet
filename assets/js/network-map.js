@@ -102,20 +102,19 @@
     routePaths.push(entry);
   });
 
-  /* Inland offices are represented as ports for search and interaction, but
-     do not have a published maritime route in the schedule data. Keep that
-     distinction clear while still showing the requested illustrative links
-     from both gateways to POSO on every map. These paths stay out of
-     routePaths and are selectable only as presentation-only connections. */
+  /* Non-published / illustrative links are represented for map context and
+     interaction, but remain separate from the official service graph. These
+     paths stay out of routePaths and are selectable only as presentation-
+     only connections. */
   var illustrativePaths = [];
   // Presentation-only routes live beside the published network data. They
   // are intentionally not included in `routes`, so schedules and the service
-  // graph never claim that an inland Poso sailing is published.
-  var inlandConnectors = NETWORK.illustrativeRoutes || [
+  // graph never claim that an illustrative connection is published.
+  var illustrativeRoutes = NETWORK.illustrativeRoutes || [
     { from: 'SBY', to: 'PSO', kind: 'indicative' },
     { from: 'JKT', to: 'PSO', kind: 'indicative' }
   ];
-  inlandConnectors.forEach(function (connectorDef) {
+  illustrativeRoutes.forEach(function (connectorDef) {
     var A = byId[connectorDef.from], B = byId[connectorDef.to];
     if (!A || !B) return;
     var connector = svg('path', {
@@ -207,7 +206,7 @@
       'data-id': p.id,
       tabindex: '0',
       role: 'button',
-      'aria-label': p.name + ', ' + p.region + (p.headquarters ? ' — head office' : '')
+      'aria-label': (p.mapLabel || p.name) + ', ' + p.region + (p.headquarters ? ' — head office' : '')
     });
     g.setAttribute('transform', 'translate(' + p.x + ' ' + p.y + ')');
     // Keep the visual marker precise while giving touch users a comfortable
@@ -221,7 +220,7 @@
       class: 'map-port-label' + (p.id === 'SBY' || p.id === 'JKT' ? ' on' : ''),
       x: 0, y: p.hub ? -18 : -14, 'text-anchor': 'middle'
     });
-    label.textContent = p.name;
+    label.textContent = p.mapLabel || p.name;
     g.appendChild(label);
     portsG.appendChild(g);
     portNodes[p.id] = g;
@@ -516,10 +515,10 @@
     if (!A || !B) return;
     setEndpointLabels(fromId, toId);
     var result = findChain(fromId, toId);
-    // Poso is an inland/illustrative destination rather than a published
-    // maritime service. Treat its gateway connectors as a presentation-only
-    // route so they get the same highlight/fade lifecycle and voyage beacon
-    // without contaminating the published service graph or schedule data.
+    // Illustrative links are presentation-only rather than published
+    // maritime services. Treat them as selectable routes so they get the
+    // same highlight/fade lifecycle and voyage beacon without contaminating
+    // the published service graph or schedule data.
     var illustrative = illustrativePaths.filter(function (path) {
       var a = path.getAttribute('data-from');
       var b = path.getAttribute('data-to');
@@ -769,9 +768,9 @@
       });
     });
 
-    // Draw the illustrative gateway → Poso connectors in the same solid,
-    // west-to-east reveal wave as the published routes. They are deliberately
-    // not part of routePaths, so search results remain factual.
+    // Draw illustrative connectors in the same solid reveal wave as the
+    // published routes. They are deliberately not part of routePaths, so
+    // search results remain factual.
     illustrativePaths.forEach(function (el2, i) {
       var L = el2.getTotalLength();
       var delay = 0.18 + i * 0.08;

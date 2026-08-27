@@ -49,6 +49,41 @@ for (const file of files) {
   }
 }
 
+/* Basic coordinate/data validation. The separate check-map.mjs command
+   rasterizes the actual stylized land artwork and verifies that every dot
+   lands on its intended rendered shape. */
+try {
+  const network = JSON.parse(await readFile(join(ROOT, 'data', 'network.json'), 'utf8'));
+  const viewBox = network.meta?.map?.viewBox || [0, 0, 1920, 764];
+  const ids = new Set();
+  for (const port of network.ports || []) {
+    if (ids.has(port.id)) errors.push(`Duplicate network port id: ${port.id}`);
+    ids.add(port.id);
+    if (!Number.isFinite(port.x) || !Number.isFinite(port.y) ||
+        port.x < viewBox[0] || port.x > viewBox[0] + viewBox[2] ||
+        port.y < viewBox[1] || port.y > viewBox[1] + viewBox[3]) {
+      errors.push(`Invalid network coordinate: ${port.id} (${port.x},${port.y})`);
+    }
+  }
+  for (const [group, routes] of [
+    ['published', network.routes || []],
+    ['illustrative', network.illustrativeRoutes || []]
+  ]) {
+    const pairs = new Set();
+    for (const route of routes) {
+      if (!ids.has(route.from)) errors.push(`Unknown ${group} route origin: ${route.from}`);
+      if (!ids.has(route.to)) errors.push(`Unknown ${group} route destination: ${route.to}`);
+      if (route.via && !ids.has(route.via)) errors.push(`Unknown ${group} route waypoint: ${route.via}`);
+      if (route.from === route.to) errors.push(`Invalid ${group} self-route: ${route.from}`);
+      const pair = `${route.from}->${route.to}`;
+      if (group === 'illustrative' && pairs.has(pair)) errors.push(`Duplicate ${group} route: ${pair}`);
+      pairs.add(pair);
+    }
+  }
+} catch (error) {
+  errors.push(`Network coordinate audit failed: ${error.message}`);
+}
+
 for (const html of files.filter((file) => extname(file).toLowerCase() === '.html')) {
   const source = await readFile(html, 'utf8');
   const ids = [...source.matchAll(/\bid=["']([^"']+)["']/gi)].map((match) => match[1]);
