@@ -1,6 +1,3 @@
-
-'use strict';
-
 const UPSTREAM = 'https://sync.tantooffice.com/api/tcm/';
 const ALLOWED_PATHS = new Set([
   'container_tracking',
@@ -9,6 +6,17 @@ const ALLOWED_PATHS = new Set([
 ]);
 
 function readBody(req) {
+  // Vercel normally gives us the raw IncomingMessage because body parsing is
+  // disabled below. Keep a fallback for runtimes/adapters that have already
+  // parsed the body, so the proxy remains portable across deployments.
+  if (req.body !== undefined && req.body !== null) {
+    if (Buffer.isBuffer(req.body)) return Promise.resolve(req.body);
+    if (typeof req.body === 'string') return Promise.resolve(Buffer.from(req.body));
+    if (typeof req.body === 'object') {
+      return Promise.resolve(Buffer.from(new URLSearchParams(req.body).toString()));
+    }
+  }
+  if (req.readableEnded) return Promise.resolve(Buffer.alloc(0));
   return new Promise((resolve, reject) => {
     const chunks = [];
     req.on('data', (chunk) => chunks.push(Buffer.from(chunk)));
@@ -17,7 +25,7 @@ function readBody(req) {
   });
 }
 
-module.exports = async function handler(req, res) {
+export default async function handler(req, res) {
   // Vercel exposes catch-all parameters differently between the Node and
   // Web-handler runtimes. Resolve from the request URL first so the proxy is
   // stable on both preview and production deployments.
@@ -51,7 +59,8 @@ module.exports = async function handler(req, res) {
         'Origin': 'https://www.tantonet.com',
         'Referer': 'https://www.tantonet.com/'
       },
-      body: body
+      body,
+      signal: AbortSignal.timeout(15000)
     });
     const text = await upstream.text();
     res.status(upstream.status)
@@ -61,6 +70,6 @@ module.exports = async function handler(req, res) {
   } catch (err) {
     res.status(502).json({ status: false, msg: 'Upstream API unavailable' });
   }
-};
+}
 
-module.exports.config = { api: { bodyParser: false } };
+export const config = { api: { bodyParser: false } };

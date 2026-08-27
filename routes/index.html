@@ -171,7 +171,11 @@
                   <g id="mapRoutesG"></g>
                   <g id="mapSelG"></g>
                   <g id="mapPortsG"></g>
-                  <circle id="mapVessel" class="map-vessel" r="4" cx="-100" cy="-100" visibility="hidden"/>
+                  <g id="mapVessel" class="map-vessel" transform="translate(-100 -100)" visibility="hidden" aria-hidden="true">
+                    <circle class="vessel-aura" r="10"/>
+                    <path class="vessel-wake" d="M-12 0h-9 M-10 3h-6"/>
+                    <path class="vessel-body" d="M8 0 2-3 -5-3 -9 0 -5 3 2 3Z"/>
+                  </g>
                 </svg>
               </div>
             </div>

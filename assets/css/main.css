@@ -1310,6 +1310,12 @@ table { border-collapse: collapse; width: 100%; }
 .map-vessel {
   overflow: visible;
   pointer-events: none;
+  /* The full homepage uses a small ship group; the routes page uses a
+     compact circle marker. Give both forms a visible beacon treatment. */
+  fill: #fff;
+  stroke: #d7f2ff;
+  stroke-width: 1.2;
+  filter: drop-shadow(0 0 6px rgba(11,163,255,1));
 }
 .map-vessel .vessel-aura {
   fill: var(--t-azure);

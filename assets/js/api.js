@@ -43,10 +43,16 @@
       headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' },
       body: body.toString()
     });
-    if (!res.ok) throw new Error('HTTP ' + res.status);
     var text = await res.text();
-    try { return JSON.parse(text); }
-    catch (e) { throw new Error('Upstream rejected the request: ' + text.slice(0, 120)); }
+    var payload = null;
+    try { payload = text ? JSON.parse(text) : null; } catch (e) { /* keep text for diagnostics */ }
+    if (!res.ok) {
+      var detail = payload && (payload.msg || payload.message || payload.error);
+      if (!detail && text) detail = text.replace(/\s+/g, ' ').slice(0, 160);
+      throw new Error('HTTP ' + res.status + (detail ? ': ' + detail : ''));
+    }
+    if (payload) return payload;
+    throw new Error('Upstream rejected the request: ' + text.slice(0, 120));
   }
 
   window.TANTO_API = {

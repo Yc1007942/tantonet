@@ -106,12 +106,14 @@
      do not have a published maritime route in the schedule data. Keep that
      distinction clear while still showing the requested illustrative links
      from both gateways to POSO on every map. These paths stay out of
-     routePaths so they are never presented as selectable direct services or
-     dimmed as part of a maritime result. */
+     routePaths and are selectable only as presentation-only connections. */
   var illustrativePaths = [];
-  var inlandConnectors = [
-    { from: 'SBY', to: 'PSO' },
-    { from: 'JKT', to: 'PSO' }
+  // Presentation-only routes live beside the published network data. They
+  // are intentionally not included in `routes`, so schedules and the service
+  // graph never claim that an inland Poso sailing is published.
+  var inlandConnectors = NETWORK.illustrativeRoutes || [
+    { from: 'SBY', to: 'PSO', kind: 'indicative' },
+    { from: 'JKT', to: 'PSO', kind: 'indicative' }
   ];
   inlandConnectors.forEach(function (connectorDef) {
     var A = byId[connectorDef.from], B = byId[connectorDef.to];
@@ -121,6 +123,7 @@
       class: 'map-route illustrative-route',
       'data-from': connectorDef.from,
       'data-to': connectorDef.to,
+      'data-kind': connectorDef.kind || 'indicative',
       'aria-hidden': 'true'
     });
     routesG.appendChild(connector);
@@ -489,6 +492,7 @@
     routePaths.forEach(function (rp) {
       rp.els.forEach(function (el2) { el2.classList.remove('dim'); });
     });
+    illustrativePaths.forEach(function (el2) { el2.classList.remove('dim'); });
     ports.forEach(function (p) {
       var n = portNodes[p.id];
       n.classList.remove('dim', 'chain-end');
@@ -512,6 +516,22 @@
     if (!A || !B) return;
     setEndpointLabels(fromId, toId);
     var result = findChain(fromId, toId);
+    // Poso is an inland/illustrative destination rather than a published
+    // maritime service. Treat its gateway connectors as a presentation-only
+    // route so they get the same highlight/fade lifecycle and voyage beacon
+    // without contaminating the published service graph or schedule data.
+    var illustrative = illustrativePaths.filter(function (path) {
+      var a = path.getAttribute('data-from');
+      var b = path.getAttribute('data-to');
+      return (a === fromId && b === toId) || (a === toId && b === fromId);
+    })[0] || null;
+    if (!result && illustrative) {
+      result = {
+        chain: [fromId, toId],
+        illustrative: true,
+        edges: [{ label: 'indicative', direct: true, region: B.region }]
+      };
+    }
     stopVoyage();
     while (selG && selG.firstChild) selG.removeChild(selG.firstChild);
     ports.forEach(function (p) {
@@ -519,6 +539,11 @@
     });
     routePaths.forEach(function (rp) {
       rp.els.forEach(function (el2) { el2.classList.toggle('dim', !!result); });
+    });
+    illustrativePaths.forEach(function (el2) {
+      // Keep the selected illustrative connector bright; all other map
+      // connectors fade exactly like published routes.
+      el2.classList.toggle('dim', !!result && el2 !== illustrative);
     });
 
     if (!result) {
@@ -561,7 +586,9 @@
 
     // Info: full chain + per-leg frequency + routing.
     var viaPorts = chain.slice(1, -1).map(function (id) { return byId[id].name; });
-    var routingTxt = viaPorts.length ? 'Via ' + viaPorts.join(' · ') : 'Direct';
+    var routingTxt = result.illustrative
+      ? 'Indicative connection'
+      : (viaPorts.length ? 'Via ' + viaPorts.join(' · ') : 'Direct');
     var freqTxt = result.edges.map(function (e) { return e.label; }).join(' · ');
     var regionTxt = (!viaPorts.length && result.edges[0] && result.edges[0].direct) ? ' · ' + result.edges[0].region : '';
     var html =
@@ -570,6 +597,7 @@
       '<span>Frequency<b>' + esc(freqTxt) + '</b></span>' +
       '<span>Routing<b>' + esc(routingTxt) + esc(regionTxt) + '</b></span>' +
       '</div>' +
+      (result.illustrative ? '<div class="mri-note">Illustrative gateway connection — verify routing with the Tanto office.</div>' : '') +
       '<div class="mri-cta"><a class="btn btn-azure btn-sm" href="/schedules/?from=' + fromId + '&to=' + toId + '">View full schedule</a></div>';
     routeInfo.innerHTML = html;
     routeInfo.classList.toggle('show', !mobile());
@@ -577,7 +605,7 @@
       openSheet(A.name + ' → ' + B.name, routingTxt, [
         { id: 'sheetFrom', value: chain.map(function (id) { return byId[id].name; }).join(' · ') },
         { id: 'sheetFreq', value: freqTxt },
-        { id: 'sheetVia', value: viaPorts.length ? 'Transits ' + viaPorts.length + ' port' + (viaPorts.length > 1 ? 's' : '') : 'Direct connection' }
+        { id: 'sheetVia', value: result.illustrative ? 'Indicative connection' : (viaPorts.length ? 'Transits ' + viaPorts.length + ' port' + (viaPorts.length > 1 ? 's' : '') : 'Direct connection') }
       ], '/schedules/?from=' + fromId + '&to=' + toId);
     }
 
@@ -586,9 +614,9 @@
     var total = lens.reduce(function (a, b) { return a + b; }, 0);
     var D = reduced ? 0 : 5200; // ms per traversal
     var t0 = performance.now();
-    function frame(now) {
-      var t = D ? ((now - t0) % D) / D : 0;
-      var target = t * total;
+    function placeVessel(distance) {
+      if (!segs.length || !total) return;
+      var target = Math.max(0, Math.min(total, distance));
       var i = 0;
       while (i < segs.length - 1 && target > lens[i]) { target -= lens[i]; i++; }
       var pt = segs[i].getPointAtLength(target);
@@ -597,9 +625,16 @@
       var angle = Math.atan2(ahead.y - pt.y, ahead.x - pt.x) * 180 / Math.PI;
       vesselDot.setAttribute('transform', 'translate(' + pt.x.toFixed(1) + ' ' + pt.y.toFixed(1) + ') rotate(' + angle.toFixed(1) + ')');
       vesselDot.setAttribute('visibility', 'visible');
+    }
+    // Establish a visible beacon before the first animation frame. This also
+    // gives reduced-motion users a useful static route marker.
+    placeVessel(0);
+    function frame(now) {
+      var t = D ? ((now - t0) % D) / D : 0;
+      placeVessel(t * total);
       voyage = requestAnimationFrame(frame);
     }
-    if (!reduced) { vesselDot.setAttribute('visibility', 'visible'); voyage = requestAnimationFrame(frame); }
+    if (!reduced && total > 0) voyage = requestAnimationFrame(frame);
   }
 
   goBtn.addEventListener('click', function () {

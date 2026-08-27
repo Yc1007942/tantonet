@@ -82,5 +82,9 @@
     { "from": "SBY", "to": "TMK", "freq": "3 times", "freqMin": 3, "freqMax": 3, "via": null, "region": "Papua" },
     { "from": "SBY", "to": "MKQ", "freq": "3 times", "freqMin": 3, "freqMax": 3, "via": null, "region": "Papua" },
     { "from": "SBY", "to": "BIA", "freq": "3 times", "freqMin": 3, "freqMax": 3, "via": null, "region": "Papua", "note": "Jakarta freight transits via Surabaya" }
+  ],
+  "illustrativeRoutes": [
+    { "from": "SBY", "to": "PSO", "kind": "indicative", "note": "Illustrative gateway connection; verify routing with the Tanto office." },
+    { "from": "JKT", "to": "PSO", "kind": "indicative", "note": "Illustrative gateway connection; verify routing with the Tanto office." }
   ]
 }
