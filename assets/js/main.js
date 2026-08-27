@@ -1246,6 +1246,63 @@
     else window.setTimeout(start, 180);
   }
 
+  function initShippingBackgroundVideo() {
+    var section = $('.shipping-video');
+    var video = section && $('[data-bg-video]', section);
+    if (!section || !video) return;
+
+    var source = $('source[data-src]', video);
+    var loaded = false;
+    video.muted = true;
+    var connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+    var constrained = reducedMotion || (connection && (connection.saveData || /(^|-)2g$/.test(connection.effectiveType || '')));
+
+    function fallback() {
+      section.classList.add('is-video-fallback');
+      video.pause();
+    }
+    if (constrained) {
+      fallback();
+      return;
+    }
+    function loadSource() {
+      if (loaded || !source) return;
+      loaded = true;
+      source.src = source.getAttribute('data-src');
+      source.removeAttribute('data-src');
+      video.load();
+    }
+    function start() {
+      if (document.hidden) return;
+      loadSource();
+      var result = video.play();
+      if (result && typeof result.catch === 'function') result.catch(fallback);
+    }
+    function stop() { if (!video.paused) video.pause(); }
+    video.addEventListener('loadeddata', function () { section.classList.add('is-video-ready'); });
+    video.addEventListener('playing', function () { section.classList.add('is-video-ready'); });
+    video.addEventListener('error', fallback, { once: true });
+
+    if ('IntersectionObserver' in window) {
+      var observer = new IntersectionObserver(function (entries) {
+        entries.forEach(function (entry) {
+          if (entry.isIntersecting) start();
+          else stop();
+        });
+      }, { rootMargin: '220px 0px', threshold: 0.01 });
+      observer.observe(section);
+    } else {
+      window.setTimeout(start, 500);
+    }
+    document.addEventListener('visibilitychange', function () {
+      if (document.hidden) stop();
+      else if (section.getBoundingClientRect().bottom > 0 && section.getBoundingClientRect().top < window.innerHeight) start();
+    }, { passive: true });
+    window.addEventListener('pageshow', function () {
+      if (section.getBoundingClientRect().bottom > 0 && section.getBoundingClientRect().top < window.innerHeight) start();
+    }, { passive: true });
+  }
+
   /* ---------------- Hero parallax (subtle) ---------------- */
   function initHeroParallax() {
     if (reducedMotion) return;
@@ -1323,6 +1380,7 @@
     initNews();
     initJourney();
     initHeroVideo();
+    initShippingBackgroundVideo();
     initHeroParallax();
     initContainerFormatters();
     initLiveClock();
