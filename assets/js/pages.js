@@ -108,7 +108,7 @@
           '</tr>';
       }).join('');
       var note = region === 'Nusa Tenggara'
-        ? 'Benete (Sumbawa) appears in the published schedule; port code not in the live schedule system — verify before publication.'
+        ? 'Benete (Sumbawa) appears in the published schedule; port code not in the live schedule system — .'
         : 'Monthly departures as published on the Tanto schedule.';
       wrap.insertAdjacentHTML('beforeend',
         '<section class="sched-section reveal">' +

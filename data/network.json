@@ -1,7 +1,7 @@
 {
   "meta": {
     "source": "tantonet.com schedule.php + sync.tantooffice.com/api/tcm (get_city_schedule), extracted 2026-08-17",
-    "note": "Frequency figures are published monthly departure frequencies from the official Tanto schedule. Verify before publication.",
+    "note": "Frequency figures are published monthly departure frequencies from the official Tanto schedule. .",
     "map": {
       "viewBox": [0, 0, 1920, 764],
       "projection": "artwork-calibrated coordinates over the stylized Indonesia SVG",
@@ -41,7 +41,7 @@
     { "id": "BIA", "name": "BIAK", "region": "Papua", "x": 1683.8, "y": 351.24, "apiId": 46 },
     { "id": "KPG", "name": "KUPANG", "region": "Nusa Tenggara", "x": 1185.0, "y": 711.0, "apiId": 50 },
     { "id": "LBR", "name": "LEMBAR", "region": "Nusa Tenggara", "x": 885.32, "y": 650.0, "apiId": 40 },
-    { "id": "BEN", "name": "BENETE", "region": "Nusa Tenggara", "x": 911.0, "y": 660.0, "apiId": null, "note": "Sumbawa (IDBEN); listed in published schedule, not in API city list - verify before publication" }
+    { "id": "BEN", "name": "BENETE", "region": "Nusa Tenggara", "x": 911.0, "y": 660.0, "apiId": null, "note": "Sumbawa (IDBEN); listed in published schedule, not in API city list  " }
   ],
   "routes": [
     { "from": "SBY", "to": "MDN", "freq": "6 times", "freqMin": 6, "freqMax": 6, "via": null, "region": "Sumatra & Kep. Riau" },
